@@ -3,127 +3,119 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-interface ApplicationFormData {
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+interface ApplicationForm {
+  id?: number;
   name: string;
-  email: string;
-  phone: string;
-  position: string;
+  description: string;
+  url: string;
 }
 
 const FrontendApplicationsForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [formData, setFormData] = useState<ApplicationFormData>({
-    name: '',
-    email: '',
-    phone: '',
-    position: '',
-  });
+  const [form, setForm] = useState<ApplicationForm>({ name: '', description: '', url: '' });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
-      setLoading(true);
-      axios.get(`/api/applications/${id}`)
-        .then(response => {
-          setFormData(response.data);
-          setLoading(false);
-        })
-        .catch(error => {
-          setError('Failed to load application data.');
-          setLoading(false);
-        });
+      fetchApplication(id);
     }
   }, [id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const fetchApplication = async (appId: string) => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/applications/${appId}`);
+      setForm(response.data);
+    } catch (err) {
+      setError('Failed to load application.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setForm(prevForm => ({ ...prevForm, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    const apiCall = id ? axios.put : axios.post;
-    const url = id ? `/api/applications/${id}` : '/api/applications';
-
-    apiCall(url, formData)
-      .then(() => {
-        setSuccess('Application saved successfully.');
-        setLoading(false);
-        setTimeout(() => navigate('/applications'), 2000);
-      })
-      .catch(() => {
-        setError('Failed to save application.');
-        setLoading(false);
-      });
+    if (!form.name || !form.url) {
+      setError('Name and URL are required.');
+      return;
+    }
+    try {
+      setLoading(true);
+      if (id) {
+        await api.put(`/applications/${id}`, form);
+        setSuccess('Application updated successfully.');
+      } else {
+        await api.post('/applications', form);
+        setSuccess('Application created successfully.');
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Failed to save application.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
+    <div className="max-w-2xl mx-auto p-6 bg-white shadow-xl rounded-lg mt-10">
       <h1 className="text-2xl font-bold mb-4">{id ? 'Edit' : 'Create'} Application</h1>
-      {loading && <div className="text-center">Loading...</div>}
-      {error && <div className="text-red-500">{error}</div>}
-      {success && <div className="text-green-500">{success}</div>}
+      {loading && <div className="animate-pulse">Loading...</div>}
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+      {success && <div className="text-green-500 mb-4">{success}</div>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium">Name</label>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
           <input
             type="text"
             id="name"
             name="name"
-            value={formData.name}
+            value={form.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            id="description"
+            name="description"
+            value={form.description}
             onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium">Phone</label>
+          <label htmlFor="url" className="block text-sm font-medium text-gray-700">URL</label>
           <input
-            type="tel"
-            id="phone"
-            name="phone"
-            value={formData.phone}
+            type="url"
+            id="url"
+            name="url"
+            value={form.url}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50"
-          />
-        </div>
-        <div>
-          <label htmlFor="position" className="block text-sm font-medium">Position</label>
-          <input
-            type="text"
-            id="position"
-            name="position"
-            value={formData.position}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
-            disabled={loading}
-            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-300"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             {id ? 'Update' : 'Create'}
           </button>

@@ -13,8 +13,8 @@ import ForgotPassword from './pages/ForgotPassword'
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<Home />} />
@@ -34,8 +34,8 @@ function App() {
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   )
 }
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 
 interface IntegrationData {
   id: string;
@@ -16,8 +15,13 @@ interface UseIntegrationsAdvancedFeaturesReturn {
   updateIntegrationStatus: (id: string, status: string) => Promise<void>;
 }
 
-const useIntegrationsAdvancedFeatures = (): UseIntegrationsAdvancedFeaturesReturn => {
-  const { user } = useAuth();
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+export const useIntegrationsAdvancedFeatures = (): UseIntegrationsAdvancedFeaturesReturn => {
   const [integrations, setIntegrations] = useState<IntegrationData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,53 +30,41 @@ const useIntegrationsAdvancedFeatures = (): UseIntegrationsAdvancedFeaturesRetur
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/api/integrations', {
-        headers: {
-          Authorization: `Bearer ${user?.token}`,
-        },
-      });
+      const response = await api.get('/integrations');
       setIntegrations(response.data);
     } catch (err) {
-      setError('Failed to fetch integrations. Please try again.');
+      setError('Failed to fetch integrations. Please try again later.');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   const updateIntegrationStatus = useCallback(async (id: string, status: string) => {
     setLoading(true);
     setError(null);
     try {
-      await axios.patch(`/api/integrations/${id}`, { status }, {
-        headers: {
-          Authorization: `Bearer ${user?.token}`,
-        },
-      });
+      await api.patch(`/integrations/${id}`, { status });
       setIntegrations((prevIntegrations) =>
         prevIntegrations.map((integration) =>
           integration.id === id ? { ...integration, status } : integration
         )
       );
     } catch (err) {
-      setError('Failed to update integration status. Please try again.');
+      setError('Failed to update integration status. Please try again later.');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
-    if (user) {
-      fetchIntegrations();
-    }
-  }, [user, fetchIntegrations]);
+    fetchIntegrations();
+  }, [fetchIntegrations]);
 
   return {
     integrations,
     loading,
     error,
     fetchIntegrations,
-    updateIntegrationStatus,
+    updateIntegrationStatus
   };
 };
-
-export default useIntegrationsAdvancedFeatures;

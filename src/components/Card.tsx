@@ -1,31 +1,22 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 
 interface CardProps {
   title: string;
   description: string;
   imageUrl: string;
-  itemId: string;
+  onAction: () => void;
 }
 
-const Card: React.FC<CardProps> = ({ title, description, imageUrl, itemId }) => {
-  const { user } = useAuth();
+const Card: React.FC<CardProps> = ({ title, description, imageUrl, onAction }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
-  const handleAction = async () => {
+  const handleActionClick = async () => {
     setLoading(true);
     setError(null);
-    setSuccess(null);
     try {
-      const response = await axios.post('/api/items/action', { itemId, userId: user?.id });
-      if (response.status === 200) {
-        setSuccess('Action completed successfully!');
-      } else {
-        setError('Failed to complete action.');
-      }
+      await onAction();
     } catch (err) {
       setError('An error occurred. Please try again.');
     } finally {
@@ -34,23 +25,22 @@ const Card: React.FC<CardProps> = ({ title, description, imageUrl, itemId }) => 
   };
 
   return (
-    <div className="max-w-sm rounded overflow-hidden shadow-lg bg-white m-4">
+    <div className="max-w-sm mx-auto bg-white shadow-xl rounded-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300">
       <img className="w-full h-48 object-cover" src={imageUrl} alt={title} />
-      <div className="px-6 py-4">
-        <div className="font-bold text-xl mb-2">{title}</div>
-        <p className="text-gray-700 text-base">{description}</p>
-      </div>
-      <div className="px-6 pt-4 pb-2">
+      <div className="p-4">
+        <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+        <p className="text-gray-600">{description}</p>
+        {error && <p className="text-red-500 mt-2">{error}</p>}
         <button
-          onClick={handleAction}
+          onClick={handleActionClick}
           disabled={loading}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          className={`mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 ${
+            loading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           aria-label={`Perform action on ${title}`}
         >
-          {loading ? 'Processing...' : 'Perform Action'}
+          {loading ? 'Processing...' : 'Take Action'}
         </button>
-        {error && <p className="text-red-500 text-xs italic mt-2">{error}</p>}
-        {success && <p className="text-green-500 text-xs italic mt-2">{success}</p>}
       </div>
     </div>
   );

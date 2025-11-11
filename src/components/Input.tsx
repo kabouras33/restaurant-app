@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, ChangeEvent, FocusEvent } from 'react';
 import axios from 'axios';
 
 interface InputProps {
@@ -28,35 +28,49 @@ const Input: React.FC<InputProps> = ({
   value,
   errorMessage
 }) => {
-  const [isFocused, setIsFocused] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleBlur = () => {
-    setIsFocused(false);
-    if (required && !value) {
-      setError('This field is required.');
-    } else if (minLength && value.length < minLength) {
-      setError(`Minimum length is ${minLength} characters.`);
-    } else if (maxLength && value.length > maxLength) {
-      setError(`Maximum length is ${maxLength} characters.`);
-    } else if (pattern && !new RegExp(pattern).test(value)) {
-      setError(errorMessage || 'Invalid format.');
-    } else {
-      setError(null);
+  const handleBlur = (e: FocusEvent<HTMLInputElement>) => {
+    setTouched(true);
+    validateField(e.target);
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
+    if (touched) {
+      validateField(e.target);
     }
   };
 
-  const handleFocus = () => {
-    setIsFocused(true);
+  const validateField = (input: HTMLInputElement) => {
+    if (input.validity.valid) {
+      setError(null);
+    } else {
+      setError(errorMessage || input.validationMessage);
+    }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+  const handleAsyncValidation = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`/validate/${name}`, { params: { value } });
+      if (!response.data.valid) {
+        setError(response.data.message || 'Invalid input');
+      } else {
+        setError(null);
+      }
+    } catch (err) {
+      setError('Validation error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="mb-4">
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700">
+      <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
       <input
@@ -70,16 +84,17 @@ const Input: React.FC<InputProps> = ({
         pattern={pattern}
         value={value}
         onChange={handleChange}
-        onFocus={handleFocus}
         onBlur={handleBlur}
+        onFocus={handleAsyncValidation}
+        className={`shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md ${
+          error ? 'border-red-500' : ''
+        }`}
         aria-invalid={!!error}
-        aria-describedby={`${name}-error`}
-        className={`mt-1 block w-full px-3 py-2 border ${
-          error ? 'border-red-500' : 'border-gray-300'
-        } rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+        aria-describedby={error ? `${name}-error` : undefined}
       />
+      {loading && <p className="text-blue-500 text-sm mt-1 animate-pulse">Validating...</p>}
       {error && (
-        <p id={`${name}-error`} className="mt-2 text-sm text-red-600">
+        <p id={`${name}-error`} className="text-red-500 text-sm mt-1">
           {error}
         </p>
       )}

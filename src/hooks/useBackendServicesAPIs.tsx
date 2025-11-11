@@ -1,99 +1,90 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-interface ApiResponse<T> {
-  data: T | null;
-  error: string | null;
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+interface UseBackendServicesAPIs {
+  fetchData: (endpoint: string) => Promise<any>;
+  postData: (endpoint: string, data: any) => Promise<any>;
+  updateData: (endpoint: string, data: any) => Promise<any>;
+  deleteData: (endpoint: string) => Promise<any>;
   loading: boolean;
+  error: string | null;
 }
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
-interface Reservation {
-  id: string;
-  date: string;
-  time: string;
-  partySize: number;
-}
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  quantity: number;
-}
-
-const useBackendServicesAPIs = () => {
+export const useBackendServicesAPIs = (): UseBackendServicesAPIs => {
   const { user } = useAuth();
-  const [reservations, setReservations] = useState<ApiResponse<Reservation[]>>({
-    data: null,
-    error: null,
-    loading: false,
-  });
-  const [inventory, setInventory] = useState<ApiResponse<InventoryItem[]>>({
-    data: null,
-    error: null,
-    loading: false,
-  });
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchReservations = useCallback(async () => {
-    setReservations({ data: null, error: null, loading: true });
+  const fetchData = useCallback(async (endpoint: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await axios.get<Reservation[]>('/api/reservations', {
-        headers: { Authorization: `Bearer ${user?.token}` },
+      const response = await api.get(endpoint, {
+        headers: { Authorization: `Bearer ${user?.token}` }
       });
-      setReservations({ data: response.data, error: null, loading: false });
-    } catch (error) {
-      setReservations({ data: null, error: error.message, loading: false });
+      return response.data;
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'An error occurred');
+      throw err;
+    } finally {
+      setLoading(false);
     }
   }, [user]);
 
-  const fetchInventory = useCallback(async () => {
-    setInventory({ data: null, error: null, loading: true });
+  const postData = useCallback(async (endpoint: string, data: any) => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await axios.get<InventoryItem[]>('/api/inventory', {
-        headers: { Authorization: `Bearer ${user?.token}` },
+      const response = await api.post(endpoint, data, {
+        headers: { Authorization: `Bearer ${user?.token}` }
       });
-      setInventory({ data: response.data, error: null, loading: false });
-    } catch (error) {
-      setInventory({ data: null, error: error.message, loading: false });
+      return response.data;
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'An error occurred');
+      throw err;
+    } finally {
+      setLoading(false);
     }
   }, [user]);
 
-  const createReservation = useCallback(async (reservation: Reservation) => {
+  const updateData = useCallback(async (endpoint: string, data: any) => {
+    setLoading(true);
+    setError(null);
     try {
-      await axios.post('/api/reservations', reservation, {
-        headers: { Authorization: `Bearer ${user?.token}` },
+      const response = await api.put(endpoint, data, {
+        headers: { Authorization: `Bearer ${user?.token}` }
       });
-      fetchReservations();
-    } catch (error) {
-      console.error('Error creating reservation:', error.message);
+      return response.data;
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'An error occurred');
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  }, [user, fetchReservations]);
+  }, [user]);
 
-  const updateInventoryItem = useCallback(async (item: InventoryItem) => {
+  const deleteData = useCallback(async (endpoint: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      await axios.put(`/api/inventory/${item.id}`, item, {
-        headers: { Authorization: `Bearer ${user?.token}` },
+      const response = await api.delete(endpoint, {
+        headers: { Authorization: `Bearer ${user?.token}` }
       });
-      fetchInventory();
-    } catch (error) {
-      console.error('Error updating inventory item:', error.message);
+      return response.data;
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'An error occurred');
+      throw err;
+    } finally {
+      setLoading(false);
     }
-  }, [user, fetchInventory]);
+  }, [user]);
 
-  return {
-    reservations,
-    inventory,
-    fetchReservations,
-    fetchInventory,
-    createReservation,
-    updateInventoryItem,
-  };
+  return { fetchData, postData, updateData, deleteData, loading, error };
 };
-
-export default useBackendServicesAPIs;

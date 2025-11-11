@@ -1,27 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 
-interface ApplicationData {
+interface Application {
   id: string;
   name: string;
   status: string;
-  createdAt: string;
 }
 
 interface UseFrontendApplicationsReturn {
-  applications: ApplicationData[];
+  applications: Application[];
   loading: boolean;
   error: string | null;
-  refetch: () => void;
+  fetchApplications: () => void;
   createApplication: (name: string) => Promise<void>;
   updateApplication: (id: string, status: string) => Promise<void>;
   deleteApplication: (id: string) => Promise<void>;
 }
 
-const useFrontendApplications = (): UseFrontendApplicationsReturn => {
-  const { user } = useAuth();
-  const [applications, setApplications] = useState<ApplicationData[]>([]);
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+export const useFrontendApplications = (): UseFrontendApplicationsReturn => {
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,65 +32,55 @@ const useFrontendApplications = (): UseFrontendApplicationsReturn => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/api/applications', {
-        headers: { Authorization: `Bearer ${user?.token}` },
-      });
+      const response = await api.get<Application[]>('/applications');
       setApplications(response.data);
     } catch (err) {
-      setError('Failed to fetch applications.');
+      setError('Failed to fetch applications. Please try again later.');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
-  const createApplication = async (name: string) => {
+  const createApplication = useCallback(async (name: string) => {
     setLoading(true);
     setError(null);
     try {
-      await axios.post(
-        '/api/applications',
-        { name },
-        { headers: { Authorization: `Bearer ${user?.token}` } }
+      const response = await api.post<Application>('/applications', { name });
+      setApplications((prev) => [...prev, response.data]);
+    } catch (err) {
+      setError('Failed to create application. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateApplication = useCallback(async (id: string, status: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.put(`/applications/${id}`, { status });
+      setApplications((prev) =>
+        prev.map((app) => (app.id === id ? { ...app, status } : app))
       );
-      await fetchApplications();
     } catch (err) {
-      setError('Failed to create application.');
+      setError('Failed to update application. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const updateApplication = async (id: string, status: string) => {
+  const deleteApplication = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      await axios.put(
-        `/api/applications/${id}`,
-        { status },
-        { headers: { Authorization: `Bearer ${user?.token}` } }
-      );
-      await fetchApplications();
+      await api.delete(`/applications/${id}`);
+      setApplications((prev) => prev.filter((app) => app.id !== id));
     } catch (err) {
-      setError('Failed to update application.');
+      setError('Failed to delete application. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const deleteApplication = async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await axios.delete(`/api/applications/${id}`, {
-        headers: { Authorization: `Bearer ${user?.token}` },
-      });
-      await fetchApplications();
-    } catch (err) {
-      setError('Failed to delete application.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, []);
 
   useEffect(() => {
     fetchApplications();
@@ -97,11 +90,9 @@ const useFrontendApplications = (): UseFrontendApplicationsReturn => {
     applications,
     loading,
     error,
-    refetch: fetchApplications,
+    fetchApplications,
     createApplication,
     updateApplication,
-    deleteApplication,
+    deleteApplication
   };
 };
-
-export default useFrontendApplications;

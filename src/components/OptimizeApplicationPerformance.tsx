@@ -2,72 +2,62 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-interface CacheData {
-  [key: string]: any;
+interface OptimizeApplicationPerformanceProps {
+  onPerformanceOptimized: () => void;
 }
 
-const OptimizeApplicationPerformance: React.FC = () => {
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+const OptimizeApplicationPerformance: React.FC<OptimizeApplicationPerformanceProps> = ({ onPerformanceOptimized }) => {
   const { user } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [cache, setCache] = useState<CacheData>({});
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
-      setError(null);
       try {
-        const cacheKey = 'restaurantData';
-        if (cache[cacheKey]) {
-          setData(cache[cacheKey]);
-          setLoading(false);
-          return;
-        }
-        const response = await axios.get('/api/restaurant/data', {
-          headers: { Authorization: `Bearer ${user.token}` },
+        setLoading(true);
+        const response = await api.get('/performance-data', {
+          headers: { Authorization: `Bearer ${user?.token}` }
         });
         setData(response.data);
-        setCache((prevCache) => ({ ...prevCache, [cacheKey]: response.data }));
+        onPerformanceOptimized();
       } catch (err) {
-        setError('Failed to load data. Please try again later.');
+        setError('Failed to load performance data. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [user.token, cache]);
+  }, [user, onPerformanceOptimized]);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return <div className="animate-pulse p-4">Loading...</div>;
   }
 
   if (error) {
-    return <div className="text-red-500 text-center">{error}</div>;
+    return <div className="text-red-500 p-4">{error}</div>;
   }
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Restaurant Data</h1>
-      <table className="min-w-full bg-white">
-        <thead>
-          <tr>
-            <th className="py-2 px-4 border-b">Name</th>
-            <th className="py-2 px-4 border-b">Location</th>
-            <th className="py-2 px-4 border-b">Cuisine</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item, index) => (
-            <tr key={index} className="hover:bg-gray-100">
-              <td className="py-2 px-4 border-b">{item.name}</td>
-              <td className="py-2 px-4 border-b">{item.location}</td>
-              <td className="py-2 px-4 border-b">{item.cuisine}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <h2 className="text-xl font-bold mb-4">Performance Data</h2>
+      <ul className="space-y-2">
+        {data.map((item, index) => (
+          <li key={index} className="p-4 bg-white shadow-md rounded-lg">
+            <div className="flex justify-between">
+              <span className="font-medium">{item.name}</span>
+              <span className="text-gray-500">{item.value}</span>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

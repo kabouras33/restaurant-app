@@ -3,11 +3,17 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 interface BackendService {
-  id: number;
+  id: string;
   name: string;
-  status: string;
   description: string;
+  status: string;
 }
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
 
 const BackendServicesAPIsCard: React.FC = () => {
   const { user } = useAuth();
@@ -18,9 +24,7 @@ const BackendServicesAPIsCard: React.FC = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await axios.get('/api/services', {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
+        const response = await api.get('/backend-services');
         setServices(response.data);
       } catch (err) {
         setError('Failed to load services. Please try again later.');
@@ -28,36 +32,28 @@ const BackendServicesAPIsCard: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchServices();
-  }, [user.token]);
+  }, []);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return <div className="animate-pulse p-4">Loading services...</div>;
   }
 
   if (error) {
-    return <div className="text-red-500 text-center">{error}</div>;
+    return <div className="text-red-500 p-4">{error}</div>;
   }
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-lg">
-      <h2 className="text-xl font-bold mb-4">Backend Services & APIs</h2>
-      <ul className="space-y-4">
-        {services.map((service) => (
-          <li key={service.id} className="border p-4 rounded-lg hover:bg-gray-50">
-            <h3 className="text-lg font-semibold">{service.name}</h3>
-            <p className="text-sm text-gray-600">{service.description}</p>
-            <span
-              className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${
-                service.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-              }`}
-            >
-              {service.status}
-            </span>
-          </li>
-        ))}
-      </ul>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
+      {services.map(service => (
+        <div key={service.id} className="bg-white shadow-lg rounded-lg p-6 hover:shadow-xl transition-shadow">
+          <h2 className="text-xl font-semibold mb-2">{service.name}</h2>
+          <p className="text-gray-700 mb-4">{service.description}</p>
+          <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${service.status === 'active' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+            {service.status}
+          </span>
+        </div>
+      ))}
     </div>
   );
 };

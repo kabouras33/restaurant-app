@@ -1,53 +1,35 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  content: React.ReactNode;
+  children: ReactNode;
   onSubmit: () => Promise<void>;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, content, onSubmit }) => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, onSubmit }) => {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
 
   useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
     };
-
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
-  const handleOutsideClick = (event: MouseEvent) => {
-    if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-      onClose();
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    } else {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
-  }, [isOpen]);
-
   const handleSubmit = async () => {
-    setIsSubmitting(true);
+    setLoading(true);
     setError(null);
     try {
       await onSubmit();
@@ -55,52 +37,43 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, content, onSubmit
     } catch (err) {
       setError('An error occurred. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6"
-        role="dialog"
-        aria-labelledby="modal-title"
-        aria-describedby="modal-content"
-      >
-        <div className="flex justify-between items-center mb-4">
-          <h2 id="modal-title" className="text-xl font-semibold">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 focus:outline-none"
-            aria-label="Close modal"
-          >
-            &times;
-          </button>
-        </div>
-        <div id="modal-content" className="mb-4">
-          {content}
-        </div>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none"
+          aria-label="Close modal"
+        >
+          &times;
+        </button>
+        <h2 className="text-xl font-semibold mb-4">{title}</h2>
+        <div className="mb-4">{children}</div>
         {error && <div className="text-red-500 mb-4">{error}</div>}
-        <div className="flex justify-end">
+        <div className="flex justify-end space-x-4">
           <button
             onClick={onClose}
-            className="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2 hover:bg-gray-400 focus:outline-none"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 focus:outline-none"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 focus:outline-none ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={isSubmitting}
+            disabled={loading}
+            className={`px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {isSubmitting ? 'Submitting...' : 'Submit'}
+            {loading ? 'Submitting...' : 'Submit'}
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

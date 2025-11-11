@@ -11,24 +11,32 @@ interface Deployment {
 }
 
 const TestingSecurityDeploymentList: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+
+  const api = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+    timeout: 10000,
+    headers: { 'Content-Type': 'application/json' }
+  });
 
   useEffect(() => {
     const fetchDeployments = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/deployments?page=${currentPage}&search=${searchTerm}`);
+        const response = await api.get('/deployments', {
+          params: { page: currentPage, search: searchTerm }
+        });
         setDeployments(response.data.deployments);
         setTotalPages(response.data.totalPages);
       } catch (err) {
-        setError('Failed to fetch deployments. Please try again later.');
+        setError('Failed to load deployments. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -36,77 +44,97 @@ const TestingSecurityDeploymentList: React.FC = () => {
     fetchDeployments();
   }, [currentPage, searchTerm]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
     setCurrentPage(1);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this deployment?')) return;
+    try {
+      await api.delete(`/deployments/${id}`);
+      setDeployments(deployments.filter(deployment => deployment.id !== id));
+      alert('Deployment deleted successfully.');
+    } catch {
+      alert('Failed to delete deployment. Please try again.');
+    }
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  if (loading) return <div className="animate-pulse">Loading...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
+
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <header className="flex justify-between items-center bg-white p-4 shadow-md">
-        <h1 className="text-xl font-bold">Deployments</h1>
-        <button onClick={handleLogout} className="text-red-500">Logout</button>
-      </header>
-      <main className="mt-4">
-        <div className="mb-4">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={handleSearchChange}
-            placeholder="Search deployments..."
-            className="p-2 border border-gray-300 rounded w-full"
-          />
-        </div>
-        {loading ? (
-          <div className="text-center">Loading...</div>
-        ) : error ? (
-          <div className="text-red-500 text-center">{error}</div>
-        ) : (
-          <table className="min-w-full bg-white">
-            <thead>
-              <tr>
-                <th className="py-2">Name</th>
-                <th className="py-2">Status</th>
-                <th className="py-2">Created At</th>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Testing, Security & Deployment</h1>
+      <input
+        type="text"
+        placeholder="Search..."
+        value={searchTerm}
+        onChange={handleSearch}
+        className="mb-4 p-2 border rounded w-full"
+      />
+      <table className="min-w-full bg-white shadow-md rounded">
+        <thead>
+          <tr>
+            <th className="py-2 px-4 border-b">Name</th>
+            <th className="py-2 px-4 border-b">Status</th>
+            <th className="py-2 px-4 border-b">Created At</th>
+            <th className="py-2 px-4 border-b">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {deployments.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="text-center py-4">
+                No deployments found.
+              </td>
+            </tr>
+          ) : (
+            deployments.map(deployment => (
+              <tr key={deployment.id}>
+                <td className="py-2 px-4 border-b">{deployment.name}</td>
+                <td className="py-2 px-4 border-b">{deployment.status}</td>
+                <td className="py-2 px-4 border-b">{new Date(deployment.createdAt).toLocaleDateString()}</td>
+                <td className="py-2 px-4 border-b">
+                  <button
+                    onClick={() => navigate(`/deployments/${deployment.id}`)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(deployment.id)}
+                    className="bg-red-500 text-white px-4 py-2 ml-2 rounded hover:bg-red-600"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {deployments.map((deployment) => (
-                <tr key={deployment.id} className="border-t">
-                  <td className="py-2">{deployment.name}</td>
-                  <td className="py-2">{deployment.status}</td>
-                  <td className="py-2">{new Date(deployment.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <div className="flex justify-between mt-4">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
-          >
-            Previous
-          </button>
-          <span>Page {currentPage} of {totalPages}</span>
-          <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
-          >
-            Next
-          </button>
-        </div>
-      </main>
-      <footer className="mt-8 text-center text-gray-500">
-        &copy; 2023 Restaurant App
-      </footer>
+            ))
+          )}
+        </tbody>
+      </table>
+      <div className="flex justify-between mt-4">
+        <button
+          disabled={currentPage === 1}
+          onClick={() => handlePageChange(currentPage - 1)}
+          className="bg-gray-300 px-4 py-2 rounded disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <span>Page {currentPage} of {totalPages}</span>
+        <button
+          disabled={currentPage === totalPages}
+          onClick={() => handlePageChange(currentPage + 1)}
+          className="bg-gray-300 px-4 py-2 rounded disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 };

@@ -6,9 +6,15 @@ import { useAuth } from '../contexts/AuthContext';
 interface FormData {
   name: string;
   description: string;
-  deploymentDate: string;
   securityLevel: string;
+  deploymentStatus: string;
 }
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
 
 const TestingSecurityDeploymentForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,8 +23,8 @@ const TestingSecurityDeploymentForm: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
-    deploymentDate: '',
-    securityLevel: 'low',
+    securityLevel: '',
+    deploymentStatus: ''
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,46 +32,41 @@ const TestingSecurityDeploymentForm: React.FC = () => {
   useEffect(() => {
     if (id) {
       setLoading(true);
-      axios.get(`/api/deployments/${id}`)
-        .then(response => {
-          setFormData(response.data);
-          setLoading(false);
-        })
-        .catch(err => {
-          setError('Failed to load deployment data.');
-          setLoading(false);
-        });
+      api.get(`/deployments/${id}`)
+        .then(response => setFormData(response.data))
+        .catch(err => setError('Failed to load data'))
+        .finally(() => setLoading(false));
     }
   }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prevState => ({ ...prevState, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-
-    const apiCall = id ? axios.put(`/api/deployments/${id}`, formData) : axios.post('/api/deployments', formData);
-
-    apiCall
-      .then(() => {
-        navigate('/dashboard');
-      })
-      .catch(err => {
-        setError('Failed to save deployment data.');
-        setLoading(false);
-      });
+    try {
+      if (id) {
+        await api.put(`/deployments/${id}`, formData);
+      } else {
+        await api.post('/deployments', formData);
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Failed to save data');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h1 className="text-2xl font-bold mb-4">{id ? 'Edit Deployment' : 'Create Deployment'}</h1>
-      {error && <div className="text-red-500 mb-4">{error}</div>}
-      <form onSubmit={handleSubmit} noValidate>
-        <div className="mb-4">
+    <div className="max-w-2xl mx-auto p-6 bg-white shadow-xl rounded-lg">
+      <h1 className="text-2xl font-bold mb-4">{id ? 'Edit Deployment' : 'New Deployment'}</h1>
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
           <input
             type="text"
@@ -74,10 +75,10 @@ const TestingSecurityDeploymentForm: React.FC = () => {
             value={formData.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        <div className="mb-4">
+        <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
           <textarea
             id="description"
@@ -85,40 +86,46 @@ const TestingSecurityDeploymentForm: React.FC = () => {
             value={formData.description}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="deploymentDate" className="block text-sm font-medium text-gray-700">Deployment Date</label>
-          <input
-            type="date"
-            id="deploymentDate"
-            name="deploymentDate"
-            value={formData.deploymentDate}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-        <div className="mb-4">
+        <div>
           <label htmlFor="securityLevel" className="block text-sm font-medium text-gray-700">Security Level</label>
           <select
             id="securityLevel"
             name="securityLevel"
             value={formData.securityLevel}
             onChange={handleChange}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            required
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           >
+            <option value="">Select a level</option>
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="deploymentStatus" className="block text-sm font-medium text-gray-700">Deployment Status</label>
+          <select
+            id="deploymentStatus"
+            name="deploymentStatus"
+            value={formData.deploymentStatus}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select a status</option>
+            <option value="pending">Pending</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
           </select>
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {loading ? 'Saving...' : 'Save'}
           </button>

@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ApiResponse<T> {
@@ -7,30 +7,20 @@ interface ApiResponse<T> {
   success: boolean;
 }
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
-interface LoginResponse {
-  token: string;
-  user: User;
-}
-
 interface ErrorResponse {
   message: string;
+  status: number;
 }
 
-const apiClient: AxiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
+const api: AxiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-apiClient.interceptors.request.use(
+api.interceptors.request.use(
   (config: AxiosRequestConfig) => {
     const { user } = useAuth();
     if (user && user.token) {
@@ -38,83 +28,99 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error: AxiosError) => Promise.reject(error)
 );
 
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error) => {
+api.interceptors.response.use(
+  (response: AxiosResponse): ApiResponse<any> => {
+    return {
+      data: response.data,
+      message: response.statusText,
+      success: true,
+    };
+  },
+  (error: AxiosError): Promise<ErrorResponse> => {
+    let errorMessage = 'An unexpected error occurred';
     if (error.response) {
-      const errorResponse: ErrorResponse = error.response.data;
-      return Promise.reject(new Error(errorResponse.message || 'An error occurred'));
+      errorMessage = error.response.data.message || errorMessage;
     }
-    return Promise.reject(new Error('Network Error'));
+    return Promise.reject({
+      message: errorMessage,
+      status: error.response ? error.response.status : 500,
+    });
   }
 );
 
-export const login = async (email: string, password: string): Promise<LoginResponse> => {
+export const fetchReservations = async (): Promise<ApiResponse<any>> => {
   try {
-    const response: AxiosResponse<ApiResponse<LoginResponse>> = await apiClient.post('/auth/login', { email, password });
-    return response.data.data;
+    const response = await api.get('/reservations');
+    return response;
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
-export const fetchUserProfile = async (): Promise<User> => {
+export const createReservation = async (reservationData: any): Promise<ApiResponse<any>> => {
   try {
-    const response: AxiosResponse<ApiResponse<User>> = await apiClient.get('/user/profile');
-    return response.data.data;
+    const response = await api.post('/reservations', reservationData);
+    return response;
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
-export const updateUserProfile = async (user: Partial<User>): Promise<User> => {
+export const updateReservation = async (id: string, reservationData: any): Promise<ApiResponse<any>> => {
   try {
-    const response: AxiosResponse<ApiResponse<User>> = await apiClient.put('/user/profile', user);
-    return response.data.data;
+    const response = await api.put(`/reservations/${id}`, reservationData);
+    return response;
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
-export const fetchReservations = async (): Promise<any[]> => {
+export const deleteReservation = async (id: string): Promise<ApiResponse<any>> => {
   try {
-    const response: AxiosResponse<ApiResponse<any[]>> = await apiClient.get('/reservations');
-    return response.data.data;
+    const response = await api.delete(`/reservations/${id}`);
+    return response;
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
-export const createReservation = async (reservationData: any): Promise<any> => {
+export const fetchInventory = async (): Promise<ApiResponse<any>> => {
   try {
-    const response: AxiosResponse<ApiResponse<any>> = await apiClient.post('/reservations', reservationData);
-    return response.data.data;
+    const response = await api.get('/inventory');
+    return response;
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
-export const fetchInventory = async (): Promise<any[]> => {
+export const updateInventoryItem = async (id: string, itemData: any): Promise<ApiResponse<any>> => {
   try {
-    const response: AxiosResponse<ApiResponse<any[]>> = await apiClient.get('/inventory');
-    return response.data.data;
+    const response = await api.put(`/inventory/${id}`, itemData);
+    return response;
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
-export const updateInventoryItem = async (itemId: string, itemData: any): Promise<any> => {
+export const deleteInventoryItem = async (id: string): Promise<ApiResponse<any>> => {
   try {
-    const response: AxiosResponse<ApiResponse<any>> = await apiClient.put(`/inventory/${itemId}`, itemData);
-    return response.data.data;
+    const response = await api.delete(`/inventory/${id}`);
+    return response;
   } catch (error) {
-    throw new Error(error.message);
+    throw error;
   }
 };
 
-export default apiClient;
+export const processPayment = async (paymentData: any): Promise<ApiResponse<any>> => {
+  try {
+    const response = await api.post('/payments', paymentData);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export default api;

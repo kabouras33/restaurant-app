@@ -1,4 +1,4 @@
-import React from 'react';
+import { ReactNode } from 'react';
 
 export interface User {
   id: string;
@@ -13,7 +13,6 @@ export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  register: (name: string, email: string, password: string) => Promise<void>;
 }
 
 export interface InventoryItem {
@@ -29,11 +28,11 @@ export interface InventoryItem {
 
 export interface Reservation {
   id: string;
-  userId: string;
-  tableNumber: number;
+  customerName: string;
+  customerEmail: string;
   date: string;
   time: string;
-  numberOfGuests: number;
+  partySize: number;
   status: 'pending' | 'confirmed' | 'cancelled';
   createdAt: string;
   updatedAt: string;
@@ -41,7 +40,6 @@ export interface Reservation {
 
 export interface Payment {
   id: string;
-  userId: string;
   amount: number;
   currency: string;
   status: 'pending' | 'completed' | 'failed';
@@ -50,45 +48,49 @@ export interface Payment {
   updatedAt: string;
 }
 
-export interface Report {
+export interface Notification {
   id: string;
-  title: string;
-  content: string;
+  type: 'email' | 'sms' | 'push';
+  message: string;
+  recipient: string;
+  status: 'sent' | 'failed';
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Notification {
+export interface Report {
   id: string;
-  userId: string;
+  title: string;
+  data: any; // Use specific types based on report structure
+  generatedAt: string;
+}
+
+export interface ChildrenProps {
+  children: ReactNode;
+}
+
+export interface ApiError {
   message: string;
-  type: 'info' | 'warning' | 'error';
-  read: boolean;
-  createdAt: string;
-  updatedAt: string;
+  code: number;
 }
 
 export interface ApiResponse<T> {
   data: T;
-  error?: string;
+  error?: ApiError;
 }
 
-export interface PaginatedResponse<T> {
-  data: T[];
+export interface PaginationParams {
+  page: number;
+  pageSize: number;
+}
+
+export interface PaginationResponse<T> {
+  items: T[];
   total: number;
   page: number;
   pageSize: number;
 }
 
-export interface ErrorResponse {
-  error: string;
-}
-
-export interface LoadingState {
-  isLoading: boolean;
-  error: string | null;
-}
-
-export interface FormValidationErrors {
-  [key: string]: string;
+export interface FilterParams {
+  [key: string]: string | number | boolean;
 }

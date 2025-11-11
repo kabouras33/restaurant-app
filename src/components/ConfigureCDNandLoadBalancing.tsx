@@ -1,82 +1,88 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 
-interface CDNConfigFormProps {
+interface CDNConfigProps {
   onSuccess: () => void;
+  onError: (message: string) => void;
 }
 
-const ConfigureCDNandLoadBalancing: React.FC<CDNConfigFormProps> = ({ onSuccess }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [cdnProvider, setCdnProvider] = useState<string>('Cloudflare');
+const ConfigureCDNandLoadBalancing: React.FC<CDNConfigProps> = ({ onSuccess, onError }) => {
+  const [loading, setLoading] = useState(false);
+  const [cdnProvider, setCdnProvider] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const api = axios.create({
+    baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+    timeout: 10000,
+    headers: { 'Content-Type': 'application/json' }
+  });
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!apiKey) {
-      setError('API Key is required.');
+    if (!cdnProvider || !apiKey) {
+      setError('All fields are required.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post('/api/configure-cdn', {
-        provider: cdnProvider,
-        apiKey,
-        userId: user.id,
-      });
+      const response = await api.post('/configure-cdn', { cdnProvider, apiKey });
       if (response.status === 200) {
         onSuccess();
         navigate('/dashboard');
       }
     } catch (err) {
-      setError('Failed to configure CDN. Please try again.');
+      onError('Failed to configure CDN and Load Balancing.');
+      setError('Failed to configure CDN and Load Balancing.');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    document.title = 'Configure CDN & Load Balancing';
+  }, []);
+
   return (
-    <div className="max-w-lg mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-4">Configure CDN and Load Balancing</h2>
-      {error && <div className="text-red-500 mb-4">{error}</div>}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
+    <div className="max-w-lg mx-auto p-6 bg-white shadow-xl rounded-lg">
+      <h1 className="text-2xl font-bold mb-4">Configure CDN & Load Balancing</h1>
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="mb-4">
           <label htmlFor="cdnProvider" className="block text-sm font-medium text-gray-700">
             CDN Provider
           </label>
-          <select
+          <input
+            type="text"
             id="cdnProvider"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             value={cdnProvider}
             onChange={(e) => setCdnProvider(e.target.value)}
-            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
-          >
-            <option value="Cloudflare">Cloudflare</option>
-            <option value="AWS">AWS</option>
-          </select>
+            aria-required="true"
+          />
         </div>
-        <div>
+        <div className="mb-4">
           <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">
             API Key
           </label>
           <input
-            type="text"
+            type="password"
             id="apiKey"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            className="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             required
+            aria-required="true"
           />
         </div>
-        <div>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        <div className="flex justify-end">
           <button
             type="submit"
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             disabled={loading}
           >
             {loading ? 'Configuring...' : 'Configure'}

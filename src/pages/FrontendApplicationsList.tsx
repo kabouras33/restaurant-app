@@ -7,18 +7,24 @@ interface Application {
   id: number;
   name: string;
   status: string;
-  created_at: string;
+  createdAt: string;
 }
 
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
 const FrontendApplicationsList: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!user) {
@@ -32,86 +38,98 @@ const FrontendApplicationsList: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get('/api/applications', {
-        params: { page: currentPage, search: searchTerm },
+      const response = await api.get('/applications', {
+        params: { page: currentPage, search: searchTerm }
       });
       setApplications(response.data.applications);
       setTotalPages(response.data.totalPages);
     } catch (err) {
-      setError('Failed to load applications.');
+      setError('Failed to load applications. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this application?')) return;
+    try {
+      await api.delete(`/applications/${id}`);
+      setApplications(applications.filter(app => app.id !== id));
+    } catch {
+      setError('Failed to delete application. Please try again.');
+    }
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <header className="flex justify-between items-center bg-white p-4 shadow-md">
-        <h1 className="text-xl font-bold">Frontend Applications</h1>
-        <button onClick={handleLogout} className="text-red-500">Logout</button>
-      </header>
-      <main className="mt-4">
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Search applications..."
-            value={searchTerm}
-            onChange={handleSearch}
-            className="p-2 border border-gray-300 rounded w-full"
-          />
-        </div>
-        {loading ? (
-          <div className="text-center">Loading...</div>
-        ) : error ? (
-          <div className="text-red-500">{error}</div>
-        ) : (
-          <table className="min-w-full bg-white">
-            <thead>
-              <tr>
-                <th className="py-2">Name</th>
-                <th className="py-2">Status</th>
-                <th className="py-2">Created At</th>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Frontend Applications</h1>
+      <input
+        type="text"
+        placeholder="Search applications..."
+        className="p-2 border rounded mb-4 w-full"
+        value={searchTerm}
+        onChange={handleSearchChange}
+        aria-label="Search applications"
+      />
+      {loading ? (
+        <div className="animate-pulse">Loading...</div>
+      ) : error ? (
+        <div className="text-red-500">{error}</div>
+      ) : (
+        <table className="min-w-full bg-white shadow-md rounded">
+          <thead>
+            <tr>
+              <th className="py-2 px-4 border-b">Name</th>
+              <th className="py-2 px-4 border-b">Status</th>
+              <th className="py-2 px-4 border-b">Created At</th>
+              <th className="py-2 px-4 border-b">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {applications.map(app => (
+              <tr key={app.id} className="hover:bg-gray-100">
+                <td className="py-2 px-4 border-b">{app.name}</td>
+                <td className="py-2 px-4 border-b">{app.status}</td>
+                <td className="py-2 px-4 border-b">{new Date(app.createdAt).toLocaleDateString()}</td>
+                <td className="py-2 px-4 border-b">
+                  <button
+                    className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600"
+                    onClick={() => handleDelete(app.id)}
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {applications.map((app) => (
-                <tr key={app.id} className="text-center">
-                  <td className="py-2">{app.name}</td>
-                  <td className="py-2">{app.status}</td>
-                  <td className="py-2">{new Date(app.created_at).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <div className="flex justify-center mt-4">
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i}
-              onClick={() => handlePageChange(i + 1)}
-              className={`px-4 py-2 mx-1 ${currentPage === i + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      </main>
-      <footer className="mt-4 text-center text-gray-500">
-        &copy; 2023 Restaurant App
-      </footer>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="flex justify-between mt-4">
+        <button
+          className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 disabled:opacity-50"
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </button>
+        <span>Page {currentPage} of {totalPages}</span>
+        <button
+          className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 disabled:opacity-50"
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 };

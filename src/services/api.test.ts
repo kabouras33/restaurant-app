@@ -1,175 +1,217 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from src.services.api import (
-    login,
-    fetchUserProfile,
-    updateUserProfile,
     fetchReservations,
     createReservation,
+    updateReservation,
+    deleteReservation,
     fetchInventory,
     updateInventoryItem,
-    apiClient
+    deleteInventoryItem,
+    processPayment,
+    api
 )
-from axios import AxiosResponse
-
-# Helper function to create a mock AxiosResponse
-def create_mock_response(data, status=200):
-    mock_response = MagicMock(spec=AxiosResponse)
-    mock_response.data = {'data': data, 'message': 'Success', 'success': True}
-    mock_response.status_code = status
-    return mock_response
-
-# Helper function to create a mock error response
-def create_mock_error_response(message, status=400):
-    mock_response = MagicMock(spec=AxiosResponse)
-    mock_response.data = {'message': message}
-    mock_response.status_code = status
-    return mock_response
+from axios import AxiosError
 
 @pytest.fixture
-def mock_api_client():
-    with patch('src.services.api.apiClient') as mock:
-        yield mock
+def mock_auth_context():
+    with patch('src.services.api.useAuth') as mock_use_auth:
+        mock_use_auth.return_value = {'user': {'token': 'test-token'}}
+        yield mock_use_auth
 
-def test_login_success(mock_api_client):
+@pytest.fixture
+def mock_axios():
+    with patch('src.services.api.axios') as mock_axios:
+        yield mock_axios
+
+def test_fetch_reservations_success(mock_axios, mock_auth_context):
     # Arrange
-    mock_response = create_mock_response({'token': 'fake-token', 'user': {'id': '1', 'name': 'John Doe', 'email': 'john@example.com'}})
-    mock_api_client.post.return_value = mock_response
-
+    mock_axios.get.return_value = MagicMock(data={'reservations': []}, statusText='OK')
+    
     # Act
-    result = login('john@example.com', 'password')
-
+    response = fetchReservations()
+    
     # Assert
-    assert result['token'] == 'fake-token'
-    assert result['user']['name'] == 'John Doe'
-    mock_api_client.post.assert_called_with('/auth/login', {'email': 'john@example.com', 'password': 'password'})
+    assert response.data == {'reservations': []}
+    assert response.message == 'OK'
+    assert response.success is True
+    mock_axios.get.assert_called_once_with('/reservations')
 
-def test_login_failure(mock_api_client):
+def test_fetch_reservations_error(mock_axios, mock_auth_context):
     # Arrange
-    mock_api_client.post.side_effect = Exception('Invalid credentials')
-
+    mock_axios.get.side_effect = AxiosError(response=MagicMock(data={'message': 'Error'}, status=400))
+    
     # Act & Assert
-    with pytest.raises(Exception, match='Invalid credentials'):
-        login('john@example.com', 'wrongpassword')
-
-def test_fetch_user_profile_success(mock_api_client):
-    # Arrange
-    mock_response = create_mock_response({'id': '1', 'name': 'John Doe', 'email': 'john@example.com'})
-    mock_api_client.get.return_value = mock_response
-
-    # Act
-    result = fetchUserProfile()
-
-    # Assert
-    assert result['name'] == 'John Doe'
-    mock_api_client.get.assert_called_with('/user/profile')
-
-def test_fetch_user_profile_failure(mock_api_client):
-    # Arrange
-    mock_api_client.get.side_effect = Exception('User not found')
-
-    # Act & Assert
-    with pytest.raises(Exception, match='User not found'):
-        fetchUserProfile()
-
-def test_update_user_profile_success(mock_api_client):
-    # Arrange
-    mock_response = create_mock_response({'id': '1', 'name': 'Jane Doe', 'email': 'jane@example.com'})
-    mock_api_client.put.return_value = mock_response
-
-    # Act
-    result = updateUserProfile({'name': 'Jane Doe'})
-
-    # Assert
-    assert result['name'] == 'Jane Doe'
-    mock_api_client.put.assert_called_with('/user/profile', {'name': 'Jane Doe'})
-
-def test_update_user_profile_failure(mock_api_client):
-    # Arrange
-    mock_api_client.put.side_effect = Exception('Update failed')
-
-    # Act & Assert
-    with pytest.raises(Exception, match='Update failed'):
-        updateUserProfile({'name': 'Jane Doe'})
-
-def test_fetch_reservations_success(mock_api_client):
-    # Arrange
-    mock_response = create_mock_response([{'id': '1', 'item': 'Room 101'}])
-    mock_api_client.get.return_value = mock_response
-
-    # Act
-    result = fetchReservations()
-
-    # Assert
-    assert len(result) == 1
-    assert result[0]['item'] == 'Room 101'
-    mock_api_client.get.assert_called_with('/reservations')
-
-def test_fetch_reservations_failure(mock_api_client):
-    # Arrange
-    mock_api_client.get.side_effect = Exception('No reservations found')
-
-    # Act & Assert
-    with pytest.raises(Exception, match='No reservations found'):
+    with pytest.raises(Exception) as exc_info:
         fetchReservations()
+    assert exc_info.value.message == 'Error'
+    assert exc_info.value.status == 400
 
-def test_create_reservation_success(mock_api_client):
+def test_create_reservation_success(mock_axios, mock_auth_context):
     # Arrange
-    mock_response = create_mock_response({'id': '1', 'item': 'Room 101'})
-    mock_api_client.post.return_value = mock_response
-
+    reservation_data = {'date': '2023-10-10'}
+    mock_axios.post.return_value = MagicMock(data={'reservationId': 1}, statusText='Created')
+    
     # Act
-    result = createReservation({'item': 'Room 101'})
-
+    response = createReservation(reservation_data)
+    
     # Assert
-    assert result['item'] == 'Room 101'
-    mock_api_client.post.assert_called_with('/reservations', {'item': 'Room 101'})
+    assert response.data == {'reservationId': 1}
+    assert response.message == 'Created'
+    assert response.success is True
+    mock_axios.post.assert_called_once_with('/reservations', reservation_data)
 
-def test_create_reservation_failure(mock_api_client):
+def test_create_reservation_error(mock_axios, mock_auth_context):
     # Arrange
-    mock_api_client.post.side_effect = Exception('Reservation failed')
-
+    reservation_data = {'date': '2023-10-10'}
+    mock_axios.post.side_effect = AxiosError(response=MagicMock(data={'message': 'Error'}, status=400))
+    
     # Act & Assert
-    with pytest.raises(Exception, match='Reservation failed'):
-        createReservation({'item': 'Room 101'})
+    with pytest.raises(Exception) as exc_info:
+        createReservation(reservation_data)
+    assert exc_info.value.message == 'Error'
+    assert exc_info.value.status == 400
 
-def test_fetch_inventory_success(mock_api_client):
+def test_update_reservation_success(mock_axios, mock_auth_context):
     # Arrange
-    mock_response = create_mock_response([{'id': '1', 'name': 'Item A'}])
-    mock_api_client.get.return_value = mock_response
-
+    reservation_data = {'date': '2023-10-10'}
+    mock_axios.put.return_value = MagicMock(data={'success': True}, statusText='OK')
+    
     # Act
-    result = fetchInventory()
-
+    response = updateReservation('1', reservation_data)
+    
     # Assert
-    assert len(result) == 1
-    assert result[0]['name'] == 'Item A'
-    mock_api_client.get.assert_called_with('/inventory')
+    assert response.data == {'success': True}
+    assert response.message == 'OK'
+    assert response.success is True
+    mock_axios.put.assert_called_once_with('/reservations/1', reservation_data)
 
-def test_fetch_inventory_failure(mock_api_client):
+def test_update_reservation_error(mock_axios, mock_auth_context):
     # Arrange
-    mock_api_client.get.side_effect = Exception('Inventory not found')
-
+    reservation_data = {'date': '2023-10-10'}
+    mock_axios.put.side_effect = AxiosError(response=MagicMock(data={'message': 'Error'}, status=400))
+    
     # Act & Assert
-    with pytest.raises(Exception, match='Inventory not found'):
+    with pytest.raises(Exception) as exc_info:
+        updateReservation('1', reservation_data)
+    assert exc_info.value.message == 'Error'
+    assert exc_info.value.status == 400
+
+def test_delete_reservation_success(mock_axios, mock_auth_context):
+    # Arrange
+    mock_axios.delete.return_value = MagicMock(data={'success': True}, statusText='OK')
+    
+    # Act
+    response = deleteReservation('1')
+    
+    # Assert
+    assert response.data == {'success': True}
+    assert response.message == 'OK'
+    assert response.success is True
+    mock_axios.delete.assert_called_once_with('/reservations/1')
+
+def test_delete_reservation_error(mock_axios, mock_auth_context):
+    # Arrange
+    mock_axios.delete.side_effect = AxiosError(response=MagicMock(data={'message': 'Error'}, status=400))
+    
+    # Act & Assert
+    with pytest.raises(Exception) as exc_info:
+        deleteReservation('1')
+    assert exc_info.value.message == 'Error'
+    assert exc_info.value.status == 400
+
+def test_fetch_inventory_success(mock_axios, mock_auth_context):
+    # Arrange
+    mock_axios.get.return_value = MagicMock(data={'inventory': []}, statusText='OK')
+    
+    # Act
+    response = fetchInventory()
+    
+    # Assert
+    assert response.data == {'inventory': []}
+    assert response.message == 'OK'
+    assert response.success is True
+    mock_axios.get.assert_called_once_with('/inventory')
+
+def test_fetch_inventory_error(mock_axios, mock_auth_context):
+    # Arrange
+    mock_axios.get.side_effect = AxiosError(response=MagicMock(data={'message': 'Error'}, status=400))
+    
+    # Act & Assert
+    with pytest.raises(Exception) as exc_info:
         fetchInventory()
+    assert exc_info.value.message == 'Error'
+    assert exc_info.value.status == 400
 
-def test_update_inventory_item_success(mock_api_client):
+def test_update_inventory_item_success(mock_axios, mock_auth_context):
     # Arrange
-    mock_response = create_mock_response({'id': '1', 'name': 'Updated Item'})
-    mock_api_client.put.return_value = mock_response
-
+    item_data = {'name': 'item1'}
+    mock_axios.put.return_value = MagicMock(data={'success': True}, statusText='OK')
+    
     # Act
-    result = updateInventoryItem('1', {'name': 'Updated Item'})
-
+    response = updateInventoryItem('1', item_data)
+    
     # Assert
-    assert result['name'] == 'Updated Item'
-    mock_api_client.put.assert_called_with('/inventory/1', {'name': 'Updated Item'})
+    assert response.data == {'success': True}
+    assert response.message == 'OK'
+    assert response.success is True
+    mock_axios.put.assert_called_once_with('/inventory/1', item_data)
 
-def test_update_inventory_item_failure(mock_api_client):
+def test_update_inventory_item_error(mock_axios, mock_auth_context):
     # Arrange
-    mock_api_client.put.side_effect = Exception('Update failed')
-
+    item_data = {'name': 'item1'}
+    mock_axios.put.side_effect = AxiosError(response=MagicMock(data={'message': 'Error'}, status=400))
+    
     # Act & Assert
-    with pytest.raises(Exception, match='Update failed'):
-        updateInventoryItem('1', {'name': 'Updated Item'})
+    with pytest.raises(Exception) as exc_info:
+        updateInventoryItem('1', item_data)
+    assert exc_info.value.message == 'Error'
+    assert exc_info.value.status == 400
+
+def test_delete_inventory_item_success(mock_axios, mock_auth_context):
+    # Arrange
+    mock_axios.delete.return_value = MagicMock(data={'success': True}, statusText='OK')
+    
+    # Act
+    response = deleteInventoryItem('1')
+    
+    # Assert
+    assert response.data == {'success': True}
+    assert response.message == 'OK'
+    assert response.success is True
+    mock_axios.delete.assert_called_once_with('/inventory/1')
+
+def test_delete_inventory_item_error(mock_axios, mock_auth_context):
+    # Arrange
+    mock_axios.delete.side_effect = AxiosError(response=MagicMock(data={'message': 'Error'}, status=400))
+    
+    # Act & Assert
+    with pytest.raises(Exception) as exc_info:
+        deleteInventoryItem('1')
+    assert exc_info.value.message == 'Error'
+    assert exc_info.value.status == 400
+
+def test_process_payment_success(mock_axios, mock_auth_context):
+    # Arrange
+    payment_data = {'amount': 100}
+    mock_axios.post.return_value = MagicMock(data={'transactionId': '123'}, statusText='OK')
+    
+    # Act
+    response = processPayment(payment_data)
+    
+    # Assert
+    assert response.data == {'transactionId': '123'}
+    assert response.message == 'OK'
+    assert response.success is True
+    mock_axios.post.assert_called_once_with('/payments', payment_data)
+
+def test_process_payment_error(mock_axios, mock_auth_context):
+    # Arrange
+    payment_data = {'amount': 100}
+    mock_axios.post.side_effect = AxiosError(response=MagicMock(data={'message': 'Error'}, status=400))
+    
+    # Act & Assert
+    with pytest.raises(Exception) as exc_info:
+        processPayment(payment_data)
+    assert exc_info.value.message == 'Error'
+    assert exc_info.value.status == 400

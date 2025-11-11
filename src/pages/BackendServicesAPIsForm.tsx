@@ -3,23 +3,24 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-interface ServiceFormData {
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+interface Service {
+  id: string;
   name: string;
-  description: string;
   endpoint: string;
-  apiKey: string;
+  description: string;
 }
 
 const BackendServicesAPIsForm: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { user } = useAuth();
-  const [formData, setFormData] = useState<ServiceFormData>({
-    name: '',
-    description: '',
-    endpoint: '',
-    apiKey: '',
-  });
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [service, setService] = useState<Service>({ id: '', name: '', endpoint: '', description: '' });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -27,106 +28,88 @@ const BackendServicesAPIsForm: React.FC = () => {
   useEffect(() => {
     if (id) {
       setLoading(true);
-      axios.get(`/api/services/${id}`, { headers: { Authorization: `Bearer ${user.token}` } })
-        .then(response => {
-          setFormData(response.data);
-          setLoading(false);
-        })
-        .catch(err => {
-          setError('Failed to load service data.');
-          setLoading(false);
-        });
+      api.get(`/services/${id}`)
+        .then(response => setService(response.data))
+        .catch(() => setError('Failed to load service details'))
+        .finally(() => setLoading(false));
     }
-  }, [id, user.token]);
+  }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prevState => ({ ...prevState, [name]: value }));
+    setService(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(null);
 
-    const request = id
-      ? axios.put(`/api/services/${id}`, formData, { headers: { Authorization: `Bearer ${user.token}` } })
-      : axios.post('/api/services', formData, { headers: { Authorization: `Bearer ${user.token}` } });
-
-    request
-      .then(() => {
-        setSuccess('Service saved successfully.');
-        setLoading(false);
-        setTimeout(() => navigate('/dashboard'), 2000);
-      })
-      .catch(err => {
-        setError('Failed to save service.');
-        setLoading(false);
-      });
+    try {
+      if (id) {
+        await api.put(`/services/${id}`, service);
+        setSuccess('Service updated successfully');
+      } else {
+        await api.post('/services', service);
+        setSuccess('Service created successfully');
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Failed to save service');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
+    <div className="max-w-3xl mx-auto p-6 bg-white shadow-xl rounded-lg mt-10">
       <h1 className="text-2xl font-bold mb-4">{id ? 'Edit Service' : 'Create Service'}</h1>
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-      {success && <p className="text-green-500">{success}</p>}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
+      {loading && <div className="animate-pulse">Loading...</div>}
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+      {success && <div className="text-green-500 mb-4">{success}</div>}
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="mb-4">
           <label htmlFor="name" className="block text-sm font-medium text-gray-700">Service Name</label>
           <input
             type="text"
             id="name"
             name="name"
-            value={formData.name}
+            value={service.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          />
-        </div>
-        <div>
+        <div className="mb-4">
           <label htmlFor="endpoint" className="block text-sm font-medium text-gray-700">Endpoint</label>
           <input
             type="url"
             id="endpoint"
             name="endpoint"
-            value={formData.endpoint}
+            value={service.endpoint}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        <div>
-          <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">API Key</label>
-          <input
-            type="text"
-            id="apiKey"
-            name="apiKey"
-            value={formData.apiKey}
+        <div className="mb-4">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            id="description"
+            name="description"
+            value={service.description}
             onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
           >
-            {id ? 'Update Service' : 'Create Service'}
+            {id ? 'Update' : 'Create'}
           </button>
         </div>
       </form>

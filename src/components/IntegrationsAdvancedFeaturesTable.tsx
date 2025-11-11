@@ -6,7 +6,7 @@ interface IntegrationFeature {
   id: number;
   name: string;
   description: string;
-  enabled: boolean;
+  status: 'active' | 'inactive';
 }
 
 const IntegrationsAdvancedFeaturesTable: React.FC = () => {
@@ -14,15 +14,13 @@ const IntegrationsAdvancedFeaturesTable: React.FC = () => {
   const [features, setFeatures] = useState<IntegrationFeature[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof IntegrationFeature; direction: 'ascending' | 'descending' } | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     const fetchFeatures = async () => {
       try {
-        const response = await axios.get('/api/integrations', {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
+        const response = await axios.get('/integrations/features', {
+          headers: { Authorization: `Bearer ${user.token}` },
         });
         setFeatures(response.data);
       } catch (err) {
@@ -31,33 +29,23 @@ const IntegrationsAdvancedFeaturesTable: React.FC = () => {
         setLoading(false);
       }
     };
-
     fetchFeatures();
   }, [user.token]);
 
-  const sortFeatures = (key: keyof IntegrationFeature) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
+  const handleSort = () => {
+    const sortedFeatures = [...features].sort((a, b) => {
+      if (sortOrder === 'asc') {
+        return a.name.localeCompare(b.name);
+      } else {
+        return b.name.localeCompare(a.name);
+      }
+    });
+    setFeatures(sortedFeatures);
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
   };
 
-  const sortedFeatures = React.useMemo(() => {
-    if (!sortConfig) return features;
-    return [...features].sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
-      }
-      return 0;
-    });
-  }, [features, sortConfig]);
-
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return <div className="animate-pulse text-center text-gray-500">Loading features...</div>;
   }
 
   if (error) {
@@ -65,27 +53,38 @@ const IntegrationsAdvancedFeaturesTable: React.FC = () => {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full bg-white border border-gray-200">
+    <div className="p-4">
+      <h2 className="text-xl font-bold mb-4">Integrations & Advanced Features</h2>
+      <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
         <thead>
           <tr>
-            <th className="px-6 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onClick={() => sortFeatures('name')}>
-              Name
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <button onClick={handleSort} className="focus:outline-none">
+                Name {sortOrder === 'asc' ? '↑' : '↓'}
+              </button>
             </th>
-            <th className="px-6 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onClick={() => sortFeatures('description')}>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Description
             </th>
-            <th className="px-6 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onClick={() => sortFeatures('enabled')}>
+            <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Status
             </th>
           </tr>
         </thead>
-        <tbody>
-          {sortedFeatures.map((feature) => (
-            <tr key={feature.id} className="hover:bg-gray-100">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{feature.name}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{feature.description}</td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{feature.enabled ? 'Enabled' : 'Disabled'}</td>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {features.map((feature) => (
+            <tr key={feature.id}>
+              <td className="px-6 py-4 whitespace-nowrap">{feature.name}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{feature.description}</td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span
+                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    feature.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {feature.status}
+                </span>
+              </td>
             </tr>
           ))}
         </tbody>

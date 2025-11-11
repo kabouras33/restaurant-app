@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
 
 interface IntegrationDetail {
   id: string;
@@ -22,9 +28,7 @@ const IntegrationsAdvancedFeaturesDetail: React.FC = () => {
     const fetchIntegrationDetail = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/integrations/${id}`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
+        const response = await api.get(`/integrations/${id}`);
         setIntegration(response.data);
       } catch (err) {
         setError('Failed to load integration details.');
@@ -34,60 +38,63 @@ const IntegrationsAdvancedFeaturesDetail: React.FC = () => {
     };
 
     fetchIntegrationDetail();
-  }, [id, user.token]);
-
-  const handleDelete = async () => {
-    try {
-      await axios.delete(`/api/integrations/${id}`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      navigate('/integrations');
-    } catch (err) {
-      setError('Failed to delete integration.');
-    }
-  };
+  }, [id]);
 
   const handleToggleActive = async () => {
     if (!integration) return;
     try {
-      const updatedIntegration = { ...integration, isActive: !integration.isActive };
-      await axios.put(`/api/integrations/${id}`, updatedIntegration, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      setIntegration(updatedIntegration);
+      setLoading(true);
+      await api.put(`/integrations/${integration.id}`, { isActive: !integration.isActive });
+      setIntegration({ ...integration, isActive: !integration.isActive });
     } catch (err) {
       setError('Failed to update integration status.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-screen"><div className="loader"></div></div>;
+  const handleDelete = async () => {
+    if (!integration) return;
+    try {
+      setLoading(true);
+      await api.delete(`/integrations/${integration.id}`);
+      navigate('/integrations');
+    } catch (err) {
+      setError('Failed to delete integration.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (error) return <div className="text-red-500 text-center mt-4">{error}</div>;
+  if (loading) {
+    return <div className="animate-pulse">Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">{error}</div>;
+  }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="p-4 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">{integration?.name}</h1>
       <p className="mb-4">{integration?.description}</p>
       <div className="flex items-center mb-4">
-        <span className="mr-2">Status:</span>
-        <span className={`font-semibold ${integration?.isActive ? 'text-green-500' : 'text-red-500'}`}>
+        <span className={`mr-2 ${integration?.isActive ? 'text-green-500' : 'text-red-500'}`}>
           {integration?.isActive ? 'Active' : 'Inactive'}
         </span>
-      </div>
-      <div className="flex space-x-4">
         <button
           onClick={handleToggleActive}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
         >
-          {integration?.isActive ? 'Deactivate' : 'Activate'}
-        </button>
-        <button
-          onClick={handleDelete}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-        >
-          Delete
+          Toggle Active
         </button>
       </div>
+      <button
+        onClick={handleDelete}
+        className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
+      >
+        Delete Integration
+      </button>
     </div>
   );
 };

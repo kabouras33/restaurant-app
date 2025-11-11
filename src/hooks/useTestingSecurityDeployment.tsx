@@ -1,54 +1,51 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
-interface FetchState<T> {
-  data: T | null;
-  loading: boolean;
-  error: string | null;
-}
-
-interface UseTestingSecurityDeploymentProps<T> {
-  endpoint: string;
+interface FetchOptions {
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  body?: Record<string, any>;
-  headers?: Record<string, string>;
-  onSuccess?: (data: T) => void;
-  onError?: (error: string) => void;
+  url: string;
+  data?: any;
 }
 
-function useTestingSecurityDeployment<T>({
-  endpoint,
-  method,
-  body,
-  headers,
-  onSuccess,
-  onError,
-}: UseTestingSecurityDeploymentProps<T>): FetchState<T> {
-  const [state, setState] = useState<FetchState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-  });
+interface FetchResponse<T> {
+  data: T | null;
+  error: string | null;
+  loading: boolean;
+}
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+function useTestingSecurityDeployment<T>(options: FetchOptions): FetchResponse<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const fetchData = useCallback(async () => {
-    setState({ data: null, loading: true, error: null });
+    setLoading(true);
+    setError(null);
     try {
-      const response = await axios({
-        url: endpoint,
-        method,
-        data: body,
-        headers,
+      const response = await api.request<T>({
+        method: options.method,
+        url: options.url,
+        data: options.data
       });
-      setState({ data: response.data, loading: false, error: null });
-      if (onSuccess) onSuccess(response.data);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
-      setState({ data: null, loading: false, error: errorMessage });
-      if (onError) onError(errorMessage);
+      setData(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
     }
-  }, [endpoint, method, body, headers, onSuccess, onError]);
+  }, [options.method, options.url, options.data]);
 
-  return { ...state, fetchData };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, error, loading };
 }
 
 export default useTestingSecurityDeployment;

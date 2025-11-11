@@ -2,96 +2,92 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-interface TableRow {
+interface Deployment {
   id: number;
   name: string;
   status: string;
-  lastChecked: string;
+  date: string;
 }
 
-interface TestingSecurityDeploymentTableProps {
-  apiUrl: string;
+interface Props {
+  deployments: Deployment[];
 }
 
-const TestingSecurityDeploymentTable: React.FC<TestingSecurityDeploymentTableProps> = ({ apiUrl }) => {
-  const { user } = useAuth();
-  const [data, setData] = useState<TableRow[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+const TestingSecurityDeploymentTable: React.FC<Props> = ({ deployments }) => {
+  const [sortedDeployments, setSortedDeployments] = useState<Deployment[]>([]);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof TableRow; direction: 'ascending' | 'descending' } | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get<TableRow[]>(`${apiUrl}/testing-security-deployment`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        setData(response.data);
-      } catch (error) {
-        setError('Failed to fetch data. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [apiUrl, user.token]);
+    setSortedDeployments(deployments);
+  }, [deployments]);
 
-  const handleSort = (key: keyof TableRow) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const sortedData = React.useMemo(() => {
-    if (!sortConfig) return data;
-    return [...data].sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
-      }
+  const handleSort = (key: keyof Deployment) => {
+    const order = sortOrder === 'asc' ? 'desc' : 'asc';
+    const sorted = [...sortedDeployments].sort((a, b) => {
+      if (a[key] < b[key]) return order === 'asc' ? -1 : 1;
+      if (a[key] > b[key]) return order === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data, sortConfig]);
+    setSortedDeployments(sorted);
+    setSortOrder(order);
+  };
 
-  if (loading) {
-    return <div className="text-center py-4">Loading...</div>;
-  }
+  const fetchDeployments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get('/deployments');
+      setSortedDeployments(response.data);
+    } catch (err) {
+      setError('Failed to fetch deployments. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (error) {
-    return <div className="text-center py-4 text-red-500">{error}</div>;
+  useEffect(() => {
+    fetchDeployments();
+  }, []);
+
+  if (!user) {
+    return <div className="text-center text-red-500">Unauthorized access. Please log in.</div>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full bg-white">
-        <thead>
-          <tr>
-            <th className="py-2 px-4 border-b" onClick={() => handleSort('name')}>
-              Name
-            </th>
-            <th className="py-2 px-4 border-b" onClick={() => handleSort('status')}>
-              Status
-            </th>
-            <th className="py-2 px-4 border-b" onClick={() => handleSort('lastChecked')}>
-              Last Checked
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedData.map((row) => (
-            <tr key={row.id} className="hover:bg-gray-100">
-              <td className="py-2 px-4 border-b">{row.name}</td>
-              <td className="py-2 px-4 border-b">{row.status}</td>
-              <td className="py-2 px-4 border-b">{row.lastChecked}</td>
+    <div className="p-4">
+      {loading ? (
+        <div className="animate-pulse">Loading deployments...</div>
+      ) : error ? (
+        <div className="text-red-500">{error}</div>
+      ) : (
+        <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+          <thead className="bg-gradient-to-r from-blue-500 to-blue-700 text-white">
+            <tr>
+              <th className="py-3 px-6 text-left cursor-pointer" onClick={() => handleSort('name')}>
+                Name
+              </th>
+              <th className="py-3 px-6 text-left cursor-pointer" onClick={() => handleSort('status')}>
+                Status
+              </th>
+              <th className="py-3 px-6 text-left cursor-pointer" onClick={() => handleSort('date')}>
+                Date
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sortedDeployments.map((deployment) => (
+              <tr key={deployment.id} className="border-b hover:bg-gray-100">
+                <td className="py-3 px-6">{deployment.name}</td>
+                <td className="py-3 px-6">{deployment.status}</td>
+                <td className="py-3 px-6">{new Date(deployment.date).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

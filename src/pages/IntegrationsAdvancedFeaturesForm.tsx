@@ -4,85 +4,107 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 interface IntegrationFeature {
-  id: string;
+  id: number;
   name: string;
   description: string;
-  isActive: boolean;
+  active: boolean;
 }
 
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
 const IntegrationsAdvancedFeaturesForm: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const [feature, setFeature] = useState<IntegrationFeature | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [formState, setFormState] = useState({
+  const [formData, setFormData] = useState({
     name: '',
     description: '',
-    isActive: false,
+    active: false
   });
 
   useEffect(() => {
     if (id) {
-      axios.get(`/api/features/${id}`)
+      setLoading(true);
+      api.get(`/features/${id}`)
         .then(response => {
           setFeature(response.data);
-          setFormState({
+          setFormData({
             name: response.data.name,
             description: response.data.description,
-            isActive: response.data.isActive,
+            active: response.data.active
           });
         })
-        .catch(err => setError('Failed to load feature data.'))
+        .catch(() => setError('Failed to load feature data.'))
         .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
     }
   }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormState(prevState => ({
-      ...prevState,
-      [name]: type === 'checkbox' ? checked : value,
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setLoading(true);
     try {
       if (id) {
-        await axios.put(`/api/features/${id}`, formState);
+        await api.put(`/features/${id}`, formData);
+        alert('Feature updated successfully!');
       } else {
-        await axios.post('/api/features', formState);
+        await api.post('/features', formData);
+        alert('Feature created successfully!');
       }
       navigate('/dashboard');
-    } catch (err) {
-      setError('Failed to save feature. Please try again.');
+    } catch {
+      setError('Failed to save feature.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this feature?')) {
+      setLoading(true);
+      try {
+        await api.delete(`/features/${id}`);
+        alert('Feature deleted successfully!');
+        navigate('/dashboard');
+      } catch {
+        setError('Failed to delete feature.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  if (loading) return <div className="animate-pulse">Loading...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
     <div className="max-w-2xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">{id ? 'Edit Feature' : 'Create Feature'}</h1>
-      {error && <div className="bg-red-100 text-red-700 p-2 mb-4">{error}</div>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Feature Name</label>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
           <input
             type="text"
             id="name"
             name="name"
-            value={formState.name}
+            value={formData.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
         <div>
@@ -90,30 +112,39 @@ const IntegrationsAdvancedFeaturesForm: React.FC = () => {
           <textarea
             id="description"
             name="description"
-            value={formState.description}
+            value={formData.description}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
         <div className="flex items-center">
           <input
             type="checkbox"
-            id="isActive"
-            name="isActive"
-            checked={formState.isActive}
+            id="active"
+            name="active"
+            checked={formData.active}
             onChange={handleChange}
-            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
           />
-          <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">Active</label>
+          <label htmlFor="active" className="ml-2 block text-sm text-gray-900">Active</label>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-between">
           <button
             type="submit"
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            {id ? 'Update Feature' : 'Create Feature'}
+            {id ? 'Update' : 'Create'}
           </button>
+          {id && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Delete
+            </button>
+          )}
         </div>
       </form>
     </div>

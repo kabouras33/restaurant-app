@@ -1,6 +1,6 @@
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 
-interface AuthResponse {
+interface LoginResponse {
   token: string;
   user: {
     id: string;
@@ -9,79 +9,64 @@ interface AuthResponse {
   };
 }
 
-interface LoginData {
-  email: string;
-  password: string;
+interface ErrorResponse {
+  message: string;
 }
 
-interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
+class AuthService {
+  private api: AxiosInstance;
+  private token: string | null;
+
+  constructor() {
+    this.api = axios.create({
+      baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+      timeout: 10000,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    this.token = localStorage.getItem('token');
+    this.api.interceptors.request.use(
+      (config) => {
+        if (this.token) {
+          config.headers.Authorization = `Bearer ${this.token}`;
+        }
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+  }
+
+  async login(email: string, password: string): Promise<LoginResponse> {
+    try {
+      const response = await this.api.post<LoginResponse>('/auth/login', { email, password });
+      this.token = response.data.token;
+      localStorage.setItem('token', this.token);
+      return response.data;
+    } catch (error) {
+      const errResponse = (error.response?.data as ErrorResponse) || { message: 'Login failed' };
+      throw new Error(errResponse.message);
+    }
+  }
+
+  logout(): void {
+    this.token = null;
+    localStorage.removeItem('token');
+  }
+
+  async refreshToken(): Promise<void> {
+    try {
+      const response = await this.api.post<{ token: string }>('/auth/refresh');
+      this.token = response.data.token;
+      localStorage.setItem('token', this.token);
+    } catch (error) {
+      const errResponse = (error.response?.data as ErrorResponse) || { message: 'Token refresh failed' };
+      throw new Error(errResponse.message);
+    }
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.token;
+  }
 }
 
-const api = axios.create({
-  baseURL: 'https://api.yourrestaurantapp.com',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response.status === 401) {
-      localStorage.removeItem('authToken');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-export const login = async (data: LoginData): Promise<AuthResponse> => {
-  try {
-    const response = await api.post<AuthResponse>('/auth/login', data);
-    localStorage.setItem('authToken', response.data.token);
-    return response.data;
-  } catch (error) {
-    console.error('Login failed:', error);
-    throw new Error('Invalid email or password');
-  }
-};
-
-export const register = async (data: RegisterData): Promise<AuthResponse> => {
-  try {
-    const response = await api.post<AuthResponse>('/auth/register', data);
-    localStorage.setItem('authToken', response.data.token);
-    return response.data;
-  } catch (error) {
-    console.error('Registration failed:', error);
-    throw new Error('Registration error');
-  }
-};
-
-export const logout = (): void => {
-  localStorage.removeItem('authToken');
-  window.location.href = '/login';
-};
-
-export const getCurrentUser = async (): Promise<AuthResponse['user'] | null> => {
-  try {
-    const response = await api.get<AuthResponse['user']>('/auth/me');
-    return response.data;
-  } catch (error) {
-    console.error('Failed to fetch current user:', error);
-    return null;
-  }
-};
+export const authService = new AuthService();

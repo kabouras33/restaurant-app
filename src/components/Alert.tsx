@@ -1,58 +1,75 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
+import React from 'react';
+import { useState, useEffect } from 'react';
+import { XIcon } from '@heroicons/react/solid';
+import { Transition } from '@headlessui/react';
 
 interface AlertProps {
-  message: string;
   type: 'success' | 'error' | 'info' | 'warning';
+  message: string;
   duration?: number;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
-const Alert: React.FC<AlertProps> = ({ message, type, duration = 5000, onClose }) => {
-  const [visible, setVisible] = useState(true);
-  const { user } = useAuth();
+const Alert: React.FC<AlertProps> = ({ type, message, duration = 5000, onClose }) => {
+  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    if (duration > 0) {
-      const timer = setTimeout(() => {
-        setVisible(false);
-        if (onClose) onClose();
-      }, duration);
-      return () => clearTimeout(timer);
-    }
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      onClose();
+    }, duration);
+
+    return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  if (!visible) return null;
-
-  const alertStyles = {
-    success: 'bg-green-100 border-green-400 text-green-700',
-    error: 'bg-red-100 border-red-400 text-red-700',
-    info: 'bg-blue-100 border-blue-400 text-blue-700',
-    warning: 'bg-yellow-100 border-yellow-400 text-yellow-700',
+  const getAlertStyles = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-500 text-white';
+      case 'error':
+        return 'bg-red-500 text-white';
+      case 'info':
+        return 'bg-blue-500 text-white';
+      case 'warning':
+        return 'bg-yellow-500 text-black';
+      default:
+        return '';
+    }
   };
 
   return (
-    <div
-      className={`fixed top-4 right-4 max-w-sm w-full border-l-4 p-4 rounded shadow-lg ${alertStyles[type]}`}
-      role="alert"
-      aria-live="assertive"
-      aria-atomic="true"
+    <Transition
+      show={isVisible}
+      enter="transition ease-out duration-300"
+      enterFrom="opacity-0 translate-y-2"
+      enterTo="opacity-100 translate-y-0"
+      leave="transition ease-in duration-200"
+      leaveFrom="opacity-100 translate-y-0"
+      leaveTo="opacity-0 translate-y-2"
     >
-      <div className="flex justify-between items-center">
-        <span className="flex-1">{message}</span>
-        <button
-          onClick={() => {
-            setVisible(false);
-            if (onClose) onClose();
-          }}
-          className="ml-4 text-lg font-bold"
-          aria-label="Close alert"
-        >
-          &times;
-        </button>
+      <div
+        className={`fixed top-4 right-4 max-w-sm w-full shadow-lg rounded-lg pointer-events-auto ${getAlertStyles()}`}
+        role="alert"
+        aria-live="assertive"
+      >
+        <div className="flex items-center justify-between p-4">
+          <div className="flex-1">
+            <p className="text-sm font-medium">{message}</p>
+          </div>
+          <button
+            type="button"
+            className="ml-4 flex-shrink-0 bg-transparent text-white hover:text-gray-200 focus:outline-none"
+            onClick={() => {
+              setIsVisible(false);
+              onClose();
+            }}
+            aria-label="Close alert"
+          >
+            <XIcon className="h-5 w-5" />
+          </button>
+        </div>
       </div>
-    </div>
+    </Transition>
   );
 };
 

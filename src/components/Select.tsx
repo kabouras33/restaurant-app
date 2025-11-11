@@ -4,33 +4,35 @@ import axios from 'axios';
 interface SelectProps {
   label: string;
   name: string;
-  apiEndpoint: string;
-  onChange: (value: string) => void;
   value: string;
-  error?: string;
+  onChange: (value: string) => void;
+  optionsEndpoint: string;
+  placeholder?: string;
+  required?: boolean;
 }
 
-const Select: React.FC<SelectProps> = ({ label, name, apiEndpoint, onChange, value, error }) => {
+const Select: React.FC<SelectProps> = ({ label, name, value, onChange, optionsEndpoint, placeholder, required }) => {
   const [options, setOptions] = useState<{ id: string; name: string }[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOptions = async () => {
-      setLoading(true);
       try {
-        const response = await axios.get(apiEndpoint);
+        const response = await axios.get(optionsEndpoint);
         setOptions(response.data);
-        setFetchError(null);
-      } catch (error) {
-        setFetchError('Failed to load options. Please try again.');
+      } catch (err) {
+        setError('Failed to load options');
       } finally {
         setLoading(false);
       }
     };
-
     fetchOptions();
-  }, [apiEndpoint]);
+  }, [optionsEndpoint]);
+
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    onChange(event.target.value);
+  };
 
   return (
     <div className="mb-4">
@@ -38,30 +40,32 @@ const Select: React.FC<SelectProps> = ({ label, name, apiEndpoint, onChange, val
         {label}
       </label>
       <div className="mt-1 relative">
-        <select
-          id={name}
-          name={name}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={`block w-full pl-3 pr-10 py-2 text-base border ${
-            error || fetchError ? 'border-red-500' : 'border-gray-300'
-          } focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md`}
-          aria-invalid={!!(error || fetchError)}
-          aria-describedby={`${name}-error`}
-          disabled={loading}
-        >
-          <option value="" disabled>
-            {loading ? 'Loading...' : 'Select an option'}
-          </option>
-          {options.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.name}
-            </option>
-          ))}
-        </select>
-        {(error || fetchError) && (
-          <p id={`${name}-error`} className="mt-2 text-sm text-red-600">
-            {error || fetchError}
+        {loading ? (
+          <div className="animate-pulse bg-gray-200 h-10 w-full rounded-md"></div>
+        ) : (
+          <select
+            id={name}
+            name={name}
+            value={value}
+            onChange={handleChange}
+            required={required}
+            className={`block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md ${
+              error ? 'border-red-500' : ''
+            }`}
+            aria-invalid={!!error}
+            aria-describedby={`${name}-error`}
+          >
+            {placeholder && <option value="">{placeholder}</option>}
+            {options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        )}
+        {error && (
+          <p className="mt-2 text-sm text-red-600" id={`${name}-error`}>
+            {error}
           </p>
         )}
       </div>

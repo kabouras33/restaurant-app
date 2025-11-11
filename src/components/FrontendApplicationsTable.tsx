@@ -20,12 +20,12 @@ const FrontendApplicationsTable: React.FC = () => {
     const fetchApplications = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('/api/applications', {
+        const response = await axios.get('/applications', {
           headers: { Authorization: `Bearer ${user.token}` },
         });
         setApplications(response.data);
       } catch (err) {
-        setError('Failed to load applications.');
+        setError('Failed to load applications. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -39,58 +39,55 @@ const FrontendApplicationsTable: React.FC = () => {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
-    const sortedApplications = [...applications].sort((a, b) => {
-      if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
-      if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
-      return 0;
-    });
-    setApplications(sortedApplications);
+    setApplications((prevApplications) =>
+      [...prevApplications].sort((a, b) => {
+        if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
+        if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+        return 0;
+      })
+    );
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return <div className="animate-pulse text-center py-10">Loading applications...</div>;
   }
 
   if (error) {
-    return <div className="text-red-500">{error}</div>;
+    return <div className="text-red-500 text-center py-10">{error}</div>;
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full bg-white border border-gray-200">
+      <table className="min-w-full bg-white shadow-md rounded-lg">
         <thead>
-          <tr>
-            <th
-              className="py-2 px-4 border-b cursor-pointer"
-              onClick={() => sortApplications('name')}
-              aria-sort={sortConfig?.key === 'name' ? sortConfig.direction : 'none'}
-            >
+          <tr className="bg-blue-600 text-white">
+            <th className="py-3 px-6 text-left cursor-pointer" onClick={() => sortApplications('name')}>
               Name
             </th>
-            <th
-              className="py-2 px-4 border-b cursor-pointer"
-              onClick={() => sortApplications('status')}
-              aria-sort={sortConfig?.key === 'status' ? sortConfig.direction : 'none'}
-            >
+            <th className="py-3 px-6 text-left cursor-pointer" onClick={() => sortApplications('status')}>
               Status
             </th>
-            <th
-              className="py-2 px-4 border-b cursor-pointer"
-              onClick={() => sortApplications('createdAt')}
-              aria-sort={sortConfig?.key === 'createdAt' ? sortConfig.direction : 'none'}
-            >
+            <th className="py-3 px-6 text-left cursor-pointer" onClick={() => sortApplications('createdAt')}>
               Created At
             </th>
           </tr>
         </thead>
         <tbody>
-          {applications.map((application) => (
-            <tr key={application.id} className="hover:bg-gray-100">
-              <td className="py-2 px-4 border-b">{application.name}</td>
-              <td className="py-2 px-4 border-b">{application.status}</td>
-              <td className="py-2 px-4 border-b">{new Date(application.createdAt).toLocaleDateString()}</td>
+          {applications.length === 0 ? (
+            <tr>
+              <td colSpan={3} className="text-center py-10">
+                No applications found.
+              </td>
             </tr>
-          ))}
+          ) : (
+            applications.map((app) => (
+              <tr key={app.id} className="border-b hover:bg-gray-100">
+                <td className="py-3 px-6">{app.name}</td>
+                <td className="py-3 px-6">{app.status}</td>
+                <td className="py-3 px-6">{new Date(app.createdAt).toLocaleDateString()}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>

@@ -7,115 +7,82 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogout = async () => {
-    setLoading(true);
     try {
-      await axios.post('/api/logout');
+      setLoading(true);
+      await api.post('/auth/logout');
       logout();
       navigate('/login');
     } catch (err) {
-      setError('Failed to logout. Please try again.');
+      setError('Failed to log out. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
   return (
-    <div className="flex h-screen bg-gray-100">
-      <aside
-        className={`fixed inset-y-0 left-0 transform ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } transition-transform duration-300 ease-in-out bg-white shadow-lg z-30 w-64`}
-        aria-label="Sidebar"
-      >
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Restaurant App</h2>
-          <button
-            onClick={toggleSidebar}
-            className="text-gray-600 hover:text-gray-900 focus:outline-none"
-            aria-label="Close sidebar"
-          >
-            ✕
-          </button>
-        </div>
-        <nav className="mt-4">
-          <ul>
-            <li>
-              <Link
-                to="/dashboard"
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-200"
-              >
-                Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/inventory"
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-200"
-              >
-                Inventory
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/reservations"
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-200"
-              >
-                Reservations
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/reports"
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-200"
-              >
-                Reports
-              </Link>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-      <div className="flex-1 flex flex-col">
-        <header className="flex items-center justify-between p-4 bg-white shadow-md">
-          <button
-            onClick={toggleSidebar}
-            className="text-gray-600 hover:text-gray-900 focus:outline-none md:hidden"
-            aria-label="Open sidebar"
-          >
-            ☰
-          </button>
-          <h1 className="text-xl font-bold">Welcome, {user?.name || 'Guest'}</h1>
-          <div>
-            {loading ? (
-              <span className="text-gray-500">Logging out...</span>
+    <div className="min-h-screen flex flex-col bg-gray-100">
+      <header className="bg-blue-600 text-white shadow-md">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Restaurant App</h1>
+          <nav className="flex space-x-4">
+            <Link to="/" className="hover:underline">Home</Link>
+            {user ? (
+              <>
+                <Link to="/dashboard" className="hover:underline">Dashboard</Link>
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded"
+                  disabled={loading}
+                  aria-busy={loading}
+                >
+                  {loading ? 'Logging out...' : 'Logout'}
+                </button>
+              </>
             ) : (
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-white bg-red-500 rounded hover:bg-red-600 focus:outline-none"
-              >
-                Logout
-              </button>
+              <Link to="/login" className="hover:underline">Login</Link>
             )}
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto p-4">{children}</main>
-      </div>
+          </nav>
+        </div>
+      </header>
       {error && (
-        <div className="fixed bottom-0 left-0 right-0 bg-red-500 text-white text-center py-2">
+        <div className="bg-red-500 text-white p-4 text-center">
           {error}
         </div>
       )}
+      <div className="flex flex-1">
+        <aside className="w-64 bg-white shadow-md">
+          <ul className="space-y-2 p-4">
+            <li>
+              <Link to="/inventory" className="block p-2 hover:bg-gray-200 rounded">Inventory</Link>
+            </li>
+            <li>
+              <Link to="/reservations" className="block p-2 hover:bg-gray-200 rounded">Reservations</Link>
+            </li>
+            <li>
+              <Link to="/reports" className="block p-2 hover:bg-gray-200 rounded">Reports</Link>
+            </li>
+          </ul>
+        </aside>
+        <main className="flex-1 p-6">
+          {children}
+        </main>
+      </div>
+      <footer className="bg-gray-800 text-white text-center py-4">
+        &copy; {new Date().getFullYear()} Restaurant App. All rights reserved.
+      </footer>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 
-export const formatDate = (date: Date | string, formatStr: string = 'yyyy-MM-dd'): string => {
+export const formatDate = (date: Date | string, formatStr: string = 'MMMM dd, yyyy'): string => {
   try {
     const parsedDate = typeof date === 'string' ? new Date(date) : date;
     return format(parsedDate, formatStr);
@@ -20,35 +20,39 @@ export const formatCurrency = (amount: number, currency: string = 'USD', locale:
 };
 
 export const capitalizeText = (text: string): string => {
-  if (!text) return '';
   try {
+    if (!text) return '';
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   } catch (error) {
     console.error('Error capitalizing text:', error);
-    return text;
+    return '';
   }
 };
 
 export const truncateText = (text: string, maxLength: number): string => {
-  if (!text) return '';
   try {
-    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   } catch (error) {
     console.error('Error truncating text:', error);
     return text;
   }
 };
 
-export const formatPhoneNumber = (phoneNumber: string): string => {
+export const formatPercentage = (value: number, decimals: number = 2): string => {
   try {
-    const cleaned = ('' + phoneNumber).replace(/\D/g, '');
-    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
-    if (match) {
-      return `(${match[1]}) ${match[2]}-${match[3]}`;
-    }
-    return phoneNumber;
+    return `${(value * 100).toFixed(decimals)}%`;
   } catch (error) {
-    console.error('Error formatting phone number:', error);
-    return phoneNumber;
+    console.error('Error formatting percentage:', error);
+    return 'Invalid Percentage';
+  }
+};
+
+export const parseJSON = <T>(jsonString: string): T | null => {
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error('Error parsing JSON:', error);
+    return null;
   }
 };

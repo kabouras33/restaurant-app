@@ -3,16 +3,16 @@
 
 ## Project Overview
 
-Welcome to the Restaurant App! This web application is designed to provide restaurant owners with a comprehensive management dashboard. By subscribing to our service, restaurant owners can efficiently manage their inventory, handle reservations, and access insightful analytics. The platform offers a seamless experience with real-time notifications and secure payment processing through Stripe.
+Restaurant App is a comprehensive web application designed to streamline restaurant management. This software provides restaurant owners with a dashboard to manage their inventory, reservations, and more. By subscribing to the service, owners can efficiently handle various aspects of their restaurant operations, ensuring smooth and effective management.
 
 ## Features
 
-- **User Authentication and Management**: Secure login and user management system.
-- **Inventory Management**: Track and manage restaurant inventory efficiently.
-- **Reservation System**: Handle customer reservations with ease.
-- **Payment Processing**: Integrated with Stripe for secure transactions.
-- **Reporting and Analytics**: Gain insights through detailed reports and analytics.
-- **Real-time Notifications**: Stay updated with real-time alerts and notifications.
+- **User Authentication and Authorization**: Secure login and role-based access control for users.
+- **Inventory Management**: Track and manage stock levels, suppliers, and order history.
+- **Reservation Management**: Handle table bookings, customer preferences, and scheduling.
+- **Payment Processing with Stripe**: Secure and reliable payment gateway integration.
+- **Reporting and Analytics**: Generate insightful reports on sales, inventory, and customer behavior.
+- **Real-time Notifications**: Stay updated with instant alerts on important activities and events.
 
 ## Tech Stack
 
@@ -49,89 +49,87 @@ Welcome to the Restaurant App! This web application is designed to provide resta
    cd restaurant-app
    ```
 
-2. **Set Up the Backend**:
-   - Ensure you have Python 3.8+ installed.
-   - Create a virtual environment:
-     ```bash
-     python -m venv venv
-     source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-     ```
-   - Install dependencies:
-     ```bash
-     pip install -r backend/requirements.txt
-     ```
+2. **Set Up Environment Variables**:
+   Create a `.env` file in the root directory and configure the necessary environment variables.
 
-3. **Set Up the Frontend**:
-   - Navigate to the frontend directory:
+3. **Install Dependencies**:
+   - **Frontend**:
      ```bash
      cd frontend
-     ```
-   - Install dependencies:
-     ```bash
      npm install
      ```
-
-4. **Configure Environment Variables**:
-   - Create a `.env` file in the backend directory and configure your database and Stripe credentials.
-
-5. **Run the Application**:
-   - Start the backend server:
+   - **Backend**:
      ```bash
-     uvicorn main:app --reload
+     cd backend
+     pip install -r requirements.txt
      ```
-   - Start the frontend server:
+
+4. **Run the Application**:
+   - **Frontend**:
      ```bash
      npm run dev
      ```
+   - **Backend**:
+     ```bash
+     uvicorn main:app --reload
+     ```
+
+5. **Database Setup**:
+   Ensure PostgreSQL is installed and running. Create a database and update the connection string in the backend configuration.
 
 ## Usage Guide
 
-- Access the application at `http://localhost:3000`.
-- Register or log in using your credentials.
-- Navigate through the dashboard to manage inventory, reservations, and view analytics.
-- Use the settings to configure notifications and payment options.
+- **Access the Dashboard**: Navigate to `http://localhost:3000` to access the frontend dashboard.
+- **Login**: Use your credentials to log in and access the features based on your role.
+- **Manage Inventory and Reservations**: Utilize the dashboard to update inventory levels and manage reservations.
+- **View Reports**: Generate and view reports from the analytics section.
 
 ## API Documentation
 
-The backend API is documented using Swagger. Once the backend server is running, access the API documentation at `http://localhost:8000/docs`.
+The backend API is documented using OpenAPI. Once the backend server is running, access the API documentation at `http://localhost:8000/docs`.
 
 ## Testing Instructions
 
-- **Backend Testing**:
-  - Run tests using Pytest:
-    ```bash
-    pytest
-    ```
+- **Frontend Tests**:
+  ```bash
+  cd frontend
+  npm run test
+  ```
 
-- **Frontend Testing**:
-  - Run tests using React Testing Library:
-    ```bash
-    npm test
-    ```
+- **Backend Tests**:
+  ```bash
+  cd backend
+  pytest
+  ```
 
 ## Deployment Guide
 
-1. **Docker Setup**:
-   - Build and run the Docker containers:
-     ```bash
-     docker-compose up --build
-     ```
+1. **Build Docker Images**:
+   ```bash
+   docker-compose build
+   ```
 
-2. **AWS EC2 Deployment**:
-   - Push the Docker images to a container registry.
-   - Pull and run the images on your AWS EC2 instance.
+2. **Deploy with Docker Compose**:
+   ```bash
+   docker-compose up
+   ```
 
-3. **Cloudflare Configuration**:
-   - Configure your domain and DNS settings via Cloudflare for enhanced security and performance.
+3. **Deploy on AWS EC2**:
+   - Set up an EC2 instance and configure security groups.
+   - SSH into the instance and clone the repository.
+   - Follow the Docker deployment steps on the EC2 instance.
+
+4. **Configure Cloudflare**:
+   - Set up DNS records and SSL/TLS settings for your domain.
 
 ## Contributing Guidelines
 
-We welcome contributions from the community! Please follow these steps:
+We welcome contributions from the community. Please follow these steps:
 
 1. Fork the repository.
 2. Create a new branch for your feature or bugfix.
 3. Commit your changes and push them to your fork.
-4. Submit a pull request with a detailed description of your changes.
+4. Open a pull request with a detailed description of your changes.
 
 ## License
 

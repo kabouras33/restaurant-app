@@ -1,49 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-interface SecurityAuditProps {
-  onAuditComplete: () => void;
+interface SecurityAudit {
+  id: number;
+  name: string;
+  status: string;
+  findings: string[];
 }
 
-const PerformSecurityAudits: React.FC<SecurityAuditProps> = ({ onAuditComplete }) => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
 
-  const handleAudit = async () => {
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    try {
-      const response = await axios.post('/api/security-audits', { userId: user.id });
-      if (response.status === 200) {
-        setSuccess('Security audit completed successfully.');
-        onAuditComplete();
-      } else {
-        setError('Failed to complete the security audit.');
+const PerformSecurityAudits: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [audits, setAudits] = useState<SecurityAudit[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    const fetchAudits = async () => {
+      try {
+        const response = await api.get('/security-audits');
+        setAudits(response.data);
+      } catch (err) {
+        setError('Failed to load security audits. Please try again later.');
+      } finally {
+        setLoading(false);
       }
+    };
+    fetchAudits();
+  }, [user, navigate]);
+
+  const handleRetry = () => {
+    setError(null);
+    setLoading(true);
+    fetchAudits();
+  };
+
+  const fetchAudits = async () => {
+    try {
+      const response = await api.get('/security-audits');
+      setAudits(response.data);
     } catch (err) {
-      setError('An error occurred while performing the security audit.');
+      setError('Failed to load security audits. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto bg-white shadow-md rounded-lg p-6 mt-8">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">Perform Security Audit</h2>
-      <button
-        onClick={handleAudit}
-        disabled={loading}
-        className={`w-full bg-blue-500 text-white py-2 px-4 rounded ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
-        aria-label="Perform Security Audit"
-      >
-        {loading ? 'Performing Audit...' : 'Start Audit'}
-      </button>
-      {error && <p className="text-red-500 mt-4">{error}</p>}
-      {success && <p className="text-green-500 mt-4">{success}</p>}
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <h1 className="text-2xl font-bold mb-4">Security Audits</h1>
+      {loading ? (
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-gray-300 rounded w-1/2 mb-2"></div>
+          <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-100 text-red-700 p-4 rounded mb-4">
+          <p>{error}</p>
+          <button onClick={handleRetry} className="mt-2 text-blue-500 underline">
+            Retry
+          </button>
+        </div>
+      ) : (
+        <ul className="space-y-4">
+          {audits.map(audit => (
+            <li key={audit.id} className="bg-white p-4 rounded shadow hover:shadow-lg transition-shadow">
+              <h2 className="text-lg font-semibold">{audit.name}</h2>
+              <p className={`text-sm ${audit.status === 'Completed' ? 'text-green-500' : 'text-yellow-500'}`}>{audit.status}</p>
+              <ul className="list-disc pl-5 mt-2">
+                {audit.findings.map((finding, index) => (
+                  <li key={index} className="text-gray-700">{finding}</li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };

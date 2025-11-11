@@ -7,10 +7,9 @@ interface User {
   email: string;
 }
 
-interface AuthState {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
+interface AuthResponse {
+  user: User;
+  token: string;
 }
 
 interface UseAuthReturn {
@@ -21,54 +20,48 @@ interface UseAuthReturn {
   logout: () => void;
 }
 
-const useAuth = (): UseAuthReturn => {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    loading: false,
-    error: null,
-  });
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+export const useAuth = (): UseAuthReturn => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      setState(prev => ({ ...prev, loading: true }));
-      try {
-        const response = await axios.get('/api/auth/user');
-        setState({ user: response.data, loading: false, error: null });
-      } catch (error) {
-        setState({ user: null, loading: false, error: 'Failed to fetch user' });
-      }
-    };
-
-    fetchUser();
+    const token = localStorage.getItem('token');
+    if (token) {
+      setLoading(true);
+      api.get<AuthResponse>('/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(response => setUser(response.data.user))
+        .catch(() => setError('Failed to fetch user data'))
+        .finally(() => setLoading(false));
+    }
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    setState(prev => ({ ...prev, loading: true }));
+    setLoading(true);
+    setError(null);
     try {
-      const response = await axios.post('/api/auth/login', { email, password });
-      setState({ user: response.data, loading: false, error: null });
-    } catch (error) {
-      setState({ user: null, loading: false, error: 'Login failed' });
+      const response = await api.post<AuthResponse>('/auth/login', { email, password });
+      setUser(response.data.user);
+      localStorage.setItem('token', response.data.token);
+    } catch (err) {
+      setError('Invalid email or password');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  const logout = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true }));
-    try {
-      await axios.post('/api/auth/logout');
-      setState({ user: null, loading: false, error: null });
-    } catch (error) {
-      setState(prev => ({ ...prev, loading: false, error: 'Logout failed' }));
-    }
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('token');
   }, []);
 
-  return {
-    user: state.user,
-    loading: state.loading,
-    error: state.error,
-    login,
-    logout,
-  };
+  return { user, loading, error, login, logout };
 };
-
-export default useAuth;

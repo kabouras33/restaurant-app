@@ -6,41 +6,50 @@ interface MaintenancePlan {
   id: number;
   name: string;
   description: string;
-  frequency: string;
+  active: boolean;
 }
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
 
 const SetUpMaintenanceAndMonitoring: React.FC = () => {
   const { user } = useAuth();
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchPlans = async () => {
       try {
-        const response = await axios.get('/api/maintenance-plans', {
-          headers: {
-            Authorization: `Bearer ${user?.token}`
-          }
-        });
+        const response = await api.get('/maintenance-plans');
         setPlans(response.data);
       } catch (err) {
-        setError('Failed to load maintenance plans.');
+        setError('Failed to load maintenance plans. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
-
     fetchPlans();
-  }, [user]);
+  }, []);
 
-  const handlePlanSelection = (planId: number) => {
-    // Implement plan selection logic
-    console.log(`Selected plan ID: ${planId}`);
+  const handlePlanSelect = async (planId: number) => {
+    setLoading(true);
+    try {
+      await api.post(`/users/${user?.id}/select-plan`, { planId });
+      setSelectedPlan(planId);
+    } catch (err) {
+      setError('Failed to select the plan. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
+    return <div className="animate-pulse text-center text-blue-600">Loading plans...</div>;
   }
 
   if (error) {
@@ -52,16 +61,16 @@ const SetUpMaintenanceAndMonitoring: React.FC = () => {
       <h1 className="text-2xl font-bold mb-4">Set Up Maintenance and Monitoring</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {plans.map(plan => (
-          <div key={plan.id} className="border rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow">
+          <div key={plan.id} className={`border rounded-lg p-4 shadow-lg ${selectedPlan === plan.id ? 'bg-blue-100' : 'bg-white'}`}>
             <h2 className="text-xl font-semibold">{plan.name}</h2>
-            <p className="text-gray-600">{plan.description}</p>
-            <p className="text-sm text-gray-500">Frequency: {plan.frequency}</p>
+            <p className="text-gray-700">{plan.description}</p>
             <button
-              onClick={() => handlePlanSelection(plan.id)}
-              className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              onClick={() => handlePlanSelect(plan.id)}
+              className={`mt-4 px-4 py-2 rounded ${selectedPlan === plan.id ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white hover:bg-blue-600'} transition`}
               aria-label={`Select ${plan.name} plan`}
+              disabled={selectedPlan === plan.id}
             >
-              Select Plan
+              {selectedPlan === plan.id ? 'Selected' : 'Select Plan'}
             </button>
           </div>
         ))}

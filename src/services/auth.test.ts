@@ -1,117 +1,82 @@
 import pytest
-from unittest.mock import patch, Mock
-from src.services.auth import login, register, logout, getCurrentUser, api
-import localStorageMock from 'localStorageMock'
+from unittest.mock import patch, MagicMock
+from src.services.auth import AuthService
 
-@pytest.fixture(autouse=True)
-def setup_and_teardown():
-    # Setup: Mock localStorage
-    localStorageMock.clear()
-    yield
-    # Teardown: Clear localStorage
-    localStorageMock.clear()
+@pytest.fixture
+def auth_service():
+    return AuthService()
 
-@patch('src.services.auth.api.post')
-def test_login_successful(mock_post):
+def test_login_success(auth_service):
     # Arrange
-    mock_response = Mock()
+    mock_response = MagicMock()
     mock_response.data = {
-        'token': 'fake-token',
+        'token': 'test-token',
         'user': {
-            'id': '1',
-            'name': 'John Doe',
-            'email': 'john@example.com'
+            'id': '123',
+            'name': 'Test User',
+            'email': 'test@example.com'
         }
     }
-    mock_post.return_value = mock_response
-    login_data = {'email': 'john@example.com', 'password': 'securepassword'}
+    with patch('src.services.auth.axios.post', return_value=mock_response):
+        # Act
+        result = auth_service.login('test@example.com', 'password123')
 
+        # Assert
+        assert result['token'] == 'test-token'
+        assert result['user']['id'] == '123'
+        assert result['user']['name'] == 'Test User'
+        assert result['user']['email'] == 'test@example.com'
+
+def test_login_failure(auth_service):
+    # Arrange
+    mock_response = MagicMock()
+    mock_response.response = {'data': {'message': 'Invalid credentials'}}
+    with patch('src.services.auth.axios.post', side_effect=Exception(mock_response)):
+        # Act & Assert
+        with pytest.raises(Exception) as exc_info:
+            auth_service.login('test@example.com', 'wrongpassword')
+        assert str(exc_info.value) == 'Invalid credentials'
+
+def test_logout(auth_service):
+    # Arrange
+    auth_service.token = 'test-token'
     # Act
-    result = login(login_data)
-
+    auth_service.logout()
     # Assert
-    assert result['token'] == 'fake-token'
-    assert result['user']['name'] == 'John Doe'
-    assert localStorageMock.getItem('authToken') == 'fake-token'
+    assert auth_service.token is None
 
-@patch('src.services.auth.api.post')
-def test_login_failure(mock_post):
+def test_refresh_token_success(auth_service):
     # Arrange
-    mock_post.side_effect = Exception('Invalid email or password')
-    login_data = {'email': 'wrong@example.com', 'password': 'wrongpassword'}
+    mock_response = MagicMock()
+    mock_response.data = {'token': 'new-token'}
+    with patch('src.services.auth.axios.post', return_value=mock_response):
+        # Act
+        auth_service.refreshToken()
+        # Assert
+        assert auth_service.token == 'new-token'
 
-    # Act & Assert
-    with pytest.raises(Exception, match='Invalid email or password'):
-        login(login_data)
-
-@patch('src.services.auth.api.post')
-def test_register_successful(mock_post):
+def test_refresh_token_failure(auth_service):
     # Arrange
-    mock_response = Mock()
-    mock_response.data = {
-        'token': 'new-token',
-        'user': {
-            'id': '2',
-            'name': 'Jane Doe',
-            'email': 'jane@example.com'
-        }
-    }
-    mock_post.return_value = mock_response
-    register_data = {'name': 'Jane Doe', 'email': 'jane@example.com', 'password': 'securepassword'}
+    mock_response = MagicMock()
+    mock_response.response = {'data': {'message': 'Token refresh failed'}}
+    with patch('src.services.auth.axios.post', side_effect=Exception(mock_response)):
+        # Act & Assert
+        with pytest.raises(Exception) as exc_info:
+            auth_service.refreshToken()
+        assert str(exc_info.value) == 'Token refresh failed'
 
+def test_is_authenticated_when_token_exists(auth_service):
+    # Arrange
+    auth_service.token = 'test-token'
     # Act
-    result = register(register_data)
-
+    result = auth_service.isAuthenticated()
     # Assert
-    assert result['token'] == 'new-token'
-    assert result['user']['name'] == 'Jane Doe'
-    assert localStorageMock.getItem('authToken') == 'new-token'
+    assert result is True
 
-@patch('src.services.auth.api.post')
-def test_register_failure(mock_post):
+def test_is_authenticated_when_token_is_none(auth_service):
     # Arrange
-    mock_post.side_effect = Exception('Registration error')
-    register_data = {'name': 'Jane Doe', 'email': 'jane@example.com', 'password': 'weak'}
-
-    # Act & Assert
-    with pytest.raises(Exception, match='Registration error'):
-        register(register_data)
-
-def test_logout():
-    # Arrange
-    localStorageMock.setItem('authToken', 'some-token')
-
+    auth_service.token = None
     # Act
-    logout()
-
+    result = auth_service.isAuthenticated()
     # Assert
-    assert localStorageMock.getItem('authToken') is None
-
-@patch('src.services.auth.api.get')
-def test_get_current_user_successful(mock_get):
-    # Arrange
-    mock_response = Mock()
-    mock_response.data = {
-        'id': '3',
-        'name': 'Alice',
-        'email': 'alice@example.com'
-    }
-    mock_get.return_value = mock_response
-
-    # Act
-    result = getCurrentUser()
-
-    # Assert
-    assert result['name'] == 'Alice'
-    assert result['email'] == 'alice@example.com'
-
-@patch('src.services.auth.api.get')
-def test_get_current_user_failure(mock_get):
-    # Arrange
-    mock_get.side_effect = Exception('Failed to fetch current user')
-
-    # Act
-    result = getCurrentUser()
-
-    # Assert
-    assert result is None
+    assert result is False

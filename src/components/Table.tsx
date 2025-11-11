@@ -1,102 +1,86 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 
-interface TableProps {
-  endpoint: string;
-  columns: { key: string; label: string }[];
-  pageSize: number;
+interface TableProps<T> {
+  data: T[];
+  columns: { key: keyof T; label: string }[];
+  fetchUrl: string;
 }
 
-interface TableData {
-  [key: string]: any;
-}
-
-const Table: React.FC<TableProps> = ({ endpoint, columns, pageSize }) => {
-  const { user } = useAuth();
-  const [data, setData] = useState<TableData[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+const Table = <T extends { id: number }>({ data, columns, fetchUrl }: TableProps<T>) => {
+  const [tableData, setTableData] = useState<T[]>(data);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>(null);
+  const [itemsPerPage] = useState<number>(10);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof T; direction: 'asc' | 'desc' } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        const response = await axios.get(endpoint, {
-          headers: {
-            Authorization: `Bearer ${user?.token}`,
-          },
-        });
-        setData(response.data);
+        const response = await axios.get<T[]>(fetchUrl);
+        setTableData(response.data);
+        setError(null);
       } catch (err) {
-        setError('Failed to load data');
+        setError('Failed to fetch data');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [endpoint, user]);
+  }, [fetchUrl]);
 
-  const handleSort = (key: string) => {
-    let direction = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
+  const sortData = (key: keyof T) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
     }
     setSortConfig({ key, direction });
-  };
-
-  const sortedData = React.useMemo(() => {
-    if (!sortConfig) return data;
-    return [...data].sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
-      }
+    const sortedData = [...tableData].sort((a, b) => {
+      if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
+      if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data, sortConfig]);
+    setTableData(sortedData);
+  };
 
-  const paginatedData = React.useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedData.slice(start, start + pageSize);
-  }, [sortedData, currentPage, pageSize]);
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
-  const totalPages = Math.ceil(data.length / pageSize);
+  const paginatedData = tableData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="overflow-x-auto">
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="loader">Loading...</div>
-        </div>
+        <div className="animate-pulse">Loading...</div>
       ) : error ? (
         <div className="text-red-500">{error}</div>
       ) : (
-        <table className="min-w-full bg-white">
-          <thead>
+        <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+          <thead className="bg-gray-200">
             <tr>
               {columns.map((column) => (
                 <th
-                  key={column.key}
-                  onClick={() => handleSort(column.key)}
-                  className="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm cursor-pointer"
-                  aria-sort={sortConfig?.key === column.key ? sortConfig.direction : 'none'}
+                  key={String(column.key)}
+                  className="py-2 px-4 text-left cursor-pointer"
+                  onClick={() => sortData(column.key)}
                 >
                   {column.label}
+                  {sortConfig?.key === column.key && (
+                    <span>{sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽'}</span>
+                  )}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((row, index) => (
-              <tr key={index} className="border-t">
+            {paginatedData.map((item) => (
+              <tr key={item.id} className="border-t hover:bg-gray-100">
                 {columns.map((column) => (
-                  <td key={column.key} className="py-2 px-4">
-                    {row[column.key]}
+                  <td key={String(column.key)} className="py-2 px-4">
+                    {item[column.key]}
                   </td>
                 ))}
               </tr>
@@ -104,21 +88,19 @@ const Table: React.FC<TableProps> = ({ endpoint, columns, pageSize }) => {
           </tbody>
         </table>
       )}
-      <div className="flex justify-between items-center mt-4">
+      <div className="flex justify-between mt-4">
         <button
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+          onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
           Previous
         </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
+        <span className="px-4 py-2">Page {currentPage}</span>
         <button
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage * itemsPerPage >= tableData.length}
         >
           Next
         </button>

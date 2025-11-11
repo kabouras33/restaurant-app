@@ -3,90 +3,106 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 interface TableProps {
-  apiUrl: string;
+  data: any[];
+  columns: { key: string; label: string }[];
 }
 
-interface TableData {
-  id: number;
-  name: string;
-  quantity: number;
-  price: number;
+interface SortConfig {
+  key: string;
+  direction: 'ascending' | 'descending';
 }
 
-const OptimizationPolishTable: React.FC<TableProps> = ({ apiUrl }) => {
-  const { user } = useAuth();
-  const [data, setData] = useState<TableData[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+const OptimizationPolishTable: React.FC<TableProps> = ({ data, columns }) => {
+  const [sortedData, setSortedData] = useState(data);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof TableData; direction: 'ascending' | 'descending' } | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(apiUrl, {
-          headers: {
-            Authorization: `Bearer ${user?.token}`,
-          },
-        });
-        setData(response.data);
-      } catch (err) {
-        setError('Failed to fetch data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [apiUrl, user]);
+    if (sortConfig !== null) {
+      const sorted = [...data].sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+      setSortedData(sorted);
+    }
+  }, [data, sortConfig]);
 
-  const handleSort = (key: keyof TableData) => {
+  const requestSort = (key: string) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
     setSortConfig({ key, direction });
-    setData((prevData) =>
-      [...prevData].sort((a, b) => {
-        if (a[key] < b[key]) return direction === 'ascending' ? -1 : 1;
-        if (a[key] > b[key]) return direction === 'ascending' ? 1 : -1;
-        return 0;
-      })
-    );
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
-  }
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get('/data-endpoint');
+      setSortedData(response.data);
+    } catch (err) {
+      setError('Failed to fetch data. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (error) {
-    return <div className="text-red-500 text-center">{error}</div>;
-  }
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full bg-white">
-        <thead>
+    <div className="p-4">
+      {loading && <div className="animate-pulse">Loading...</div>}
+      {error && <div className="text-red-500">{error}</div>}
+      <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+        <thead className="bg-gradient-to-r from-blue-500 to-blue-700 text-white">
           <tr>
-            <th className="py-2 px-4 border-b" onClick={() => handleSort('name')}>
-              Name
-            </th>
-            <th className="py-2 px-4 border-b" onClick={() => handleSort('quantity')}>
-              Quantity
-            </th>
-            <th className="py-2 px-4 border-b" onClick={() => handleSort('price')}>
-              Price
-            </th>
+            {columns.map((column) => (
+              <th
+                key={column.key}
+                onClick={() => requestSort(column.key)}
+                className="p-3 text-left cursor-pointer hover:bg-blue-600 transition"
+              >
+                {column.label}
+                {sortConfig?.key === column.key && (
+                  <span>
+                    {sortConfig.direction === 'ascending' ? ' 🔼' : ' 🔽'}
+                  </span>
+                )}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {data.map((item) => (
-            <tr key={item.id} className="hover:bg-gray-100">
-              <td className="py-2 px-4 border-b">{item.name}</td>
-              <td className="py-2 px-4 border-b">{item.quantity}</td>
-              <td className="py-2 px-4 border-b">${item.price.toFixed(2)}</td>
+          {sortedData.map((item, index) => (
+            <tr
+              key={index}
+              className="border-b hover:bg-gray-100 transition"
+              tabIndex={0}
+            >
+              {columns.map((column) => (
+                <td key={column.key} className="p-3">
+                  {item[column.key]}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>
       </table>
+      {sortedData.length === 0 && !loading && (
+        <div className="text-center p-6">
+          <p className="text-gray-500">No data available.</p>
+        </div>
+      )}
     </div>
   );
 };

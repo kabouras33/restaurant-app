@@ -1,86 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-interface PolishDetail {
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'https://ai-codepeak.com/api',
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+interface OptimizationDetail {
   id: number;
   name: string;
   description: string;
-  price: number;
-  available: boolean;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const OptimizationPolishDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [polishDetail, setPolishDetail] = useState<PolishDetail | null>(null);
+  const [detail, setDetail] = useState<OptimizationDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchPolishDetail = async () => {
+    const fetchDetail = async () => {
       try {
-        const response = await axios.get(`/api/polishes/${id}`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
-        setPolishDetail(response.data);
+        const response = await api.get(`/optimizations/${id}`);
+        setDetail(response.data);
       } catch (err) {
-        setError('Failed to load polish details.');
+        setError('Failed to load details. Please try again.');
       } finally {
         setLoading(false);
       }
     };
-
-    fetchPolishDetail();
-  }, [id, user]);
+    fetchDetail();
+  }, [id]);
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     try {
-      await axios.delete(`/api/polishes/${id}`, {
-        headers: { Authorization: `Bearer ${user?.token}` },
-      });
+      await api.delete(`/optimizations/${id}`);
+      alert('Item successfully deleted.');
       navigate('/dashboard');
     } catch (err) {
-      setError('Failed to delete the item.');
+      alert('Failed to delete item. Please try again.');
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="text-red-500 text-center mt-4">{error}</div>;
-  }
+  if (loading) return <div className="animate-pulse">Loading...</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
     <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">{polishDetail?.name}</h1>
-      <p className="mb-2">{polishDetail?.description}</p>
-      <p className="mb-2">Price: ${polishDetail?.price.toFixed(2)}</p>
-      <p className="mb-4">Available: {polishDetail?.available ? 'Yes' : 'No'}</p>
-      <div className="flex space-x-4">
-        <button
-          onClick={() => navigate(`/edit/${id}`)}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Edit
-        </button>
+      <h1 className="text-2xl font-bold mb-4">{detail?.name}</h1>
+      <p className="mb-2">{detail?.description}</p>
+      <div className="flex justify-between items-center">
+        <span className={`px-2 py-1 rounded ${detail?.status === 'active' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+          {detail?.status}
+        </span>
         <button
           onClick={handleDelete}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition"
         >
           Delete
         </button>
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-        >
-          Back to Dashboard
-        </button>
+      </div>
+      <div className="mt-4">
+        <p>Created At: {new Date(detail?.createdAt || '').toLocaleString()}</p>
+        <p>Updated At: {new Date(detail?.updatedAt || '').toLocaleString()}</p>
       </div>
     </div>
   );
