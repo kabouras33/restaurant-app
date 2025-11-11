@@ -1,0 +1,78 @@
+# Node.js
+node_modules/
+dist/
+.vite/
+*.log
+*.cache
+*.tmp
+*.swp
+
+# TypeScript
+*.tsbuildinfo
+
+# React
+build/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+*.env
+*.env.*
+
+# FastAPI
+instance/
+*.sqlite3
+
+# PostgreSQL
+*.pgdata
+*.pgdump
+
+# Docker
+*.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.override.yml
+
+# AWS
+*.pem
+*.key
+
+# GitHub Actions
+.github/workflows/*.yml
+
+# Miscellaneous
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Logs
+logs/
+*.log
+
+# Testing
+coverage/
+*.coverage
+*.pytest_cache/
+.cache/
+.jest/
+
+# Tailwind CSS
+tailwind.config.js
+tailwind.config.ts
+
+# ESLint
+.eslintcache
+
+# Ignore lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
