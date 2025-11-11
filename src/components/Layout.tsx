@@ -1,54 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-}
-
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await axios.get('/api/auth/user');
-        setUser(response.data);
-      } catch (err) {
-        setError('Failed to load user data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, []);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogout = async () => {
     try {
-      await axios.post('/api/auth/logout');
-      setUser(null);
+      setLoading(true);
+      await axios.post('/api/logout');
+      logout();
       navigate('/login');
     } catch (err) {
-      setError('Logout failed. Please try again.');
+      setError('Failed to log out. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="flex justify-center items-center h-screen text-red-500">{error}</div>;
-  }
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -56,32 +32,55 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="p-4 border-b">
           <h1 className="text-xl font-bold">Restaurant App</h1>
         </div>
-        <nav className="p-4">
+        <nav className="mt-4">
           <ul>
             <li>
-              <Link to="/dashboard" className="block py-2 px-4 hover:bg-gray-200">Dashboard</Link>
+              <Link to="/dashboard" className="block px-4 py-2 hover:bg-gray-200">
+                Dashboard
+              </Link>
             </li>
             <li>
-              <Link to="/inventory" className="block py-2 px-4 hover:bg-gray-200">Inventory</Link>
+              <Link to="/inventory" className="block px-4 py-2 hover:bg-gray-200">
+                Inventory
+              </Link>
             </li>
             <li>
-              <Link to="/reservations" className="block py-2 px-4 hover:bg-gray-200">Reservations</Link>
+              <Link to="/reservations" className="block px-4 py-2 hover:bg-gray-200">
+                Reservations
+              </Link>
             </li>
             <li>
-              <button onClick={handleLogout} className="w-full text-left py-2 px-4 hover:bg-gray-200">Logout</button>
+              <Link to="/reports" className="block px-4 py-2 hover:bg-gray-200">
+                Reports
+              </Link>
             </li>
           </ul>
         </nav>
       </aside>
-      <main className="flex-1 p-6 overflow-y-auto">
-        <header className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold">Welcome, {user?.name}</h2>
+      <div className="flex-1 flex flex-col">
+        <header className="bg-white shadow-md p-4 flex justify-between items-center">
           <div>
-            <span className="text-gray-600">{user?.email}</span>
+            <h2 className="text-lg font-semibold">Welcome, {user?.name || 'Guest'}</h2>
+          </div>
+          <div>
+            {loading ? (
+              <span className="text-gray-500">Logging out...</span>
+            ) : (
+              <button
+                onClick={handleLogout}
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                aria-label="Logout"
+              >
+                Logout
+              </button>
+            )}
           </div>
         </header>
-        <div>{children}</div>
-      </main>
+        <main className="flex-1 overflow-y-auto p-6">
+          {error && <div className="bg-red-100 text-red-700 p-4 mb-4 rounded">{error}</div>}
+          {children}
+        </main>
+      </div>
     </div>
   );
 };

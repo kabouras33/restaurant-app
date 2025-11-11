@@ -1,102 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+interface Cache {
+  [key: string]: any;
+}
 
 interface OptimizeApplicationPerformanceProps {
-  apiUrl: string;
+  endpoint: string;
 }
 
-interface RestaurantData {
-  id: number;
-  name: string;
-  location: string;
-  reservations: number;
-}
-
-const OptimizeApplicationPerformance: React.FC<OptimizeApplicationPerformanceProps> = ({ apiUrl }) => {
-  const [data, setData] = useState<RestaurantData[]>([]);
+const OptimizeApplicationPerformance: React.FC<OptimizeApplicationPerformanceProps> = ({ endpoint }) => {
+  const { user } = useAuth();
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const cache: Cache = {};
 
   useEffect(() => {
+    if (!user) {
+      setError('User not authenticated');
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      if (cache[endpoint]) {
+        setData(cache[endpoint]);
+        setLoading(false);
+        return;
+      }
+
       try {
-        setLoading(true);
-        const response = await axios.get<RestaurantData[]>(`${apiUrl}/restaurants`);
+        const response = await axios.get(endpoint, {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        });
+        cache[endpoint] = response.data;
         setData(response.data);
       } catch (err) {
-        setError('Failed to fetch data. Please try again later.');
+        setError('Failed to fetch data');
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [apiUrl]);
-
-  const handleRetry = () => {
-    setError(null);
-    setLoading(true);
-    axios.get<RestaurantData[]>(`${apiUrl}/restaurants`)
-      .then(response => {
-        setData(response.data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Failed to fetch data. Please try again later.');
-        setLoading(false);
-      });
-  };
-
-  const handleNavigate = (id: number) => {
-    navigate(`/restaurants/${id}`);
-  };
+  }, [endpoint, user]);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-screen"><div className="loader">Loading...</div></div>;
+    return <div className="flex justify-center items-center h-full"><div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status"></div></div>;
   }
 
   if (error) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen">
-        <p className="text-red-500">{error}</p>
-        <button onClick={handleRetry} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded">Retry</button>
-      </div>
-    );
+    return <div className="text-red-500 text-center">{error}</div>;
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Restaurants</h1>
-      <table className="min-w-full bg-white">
-        <thead>
-          <tr>
-            <th className="py-2">Name</th>
-            <th className="py-2">Location</th>
-            <th className="py-2">Reservations</th>
-            <th className="py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((restaurant) => (
-            <tr key={restaurant.id} className="text-center">
-              <td className="py-2">{restaurant.name}</td>
-              <td className="py-2">{restaurant.location}</td>
-              <td className="py-2">{restaurant.reservations}</td>
-              <td className="py-2">
-                <button
-                  onClick={() => handleNavigate(restaurant.id)}
-                  className="px-4 py-2 bg-green-500 text-white rounded"
-                  aria-label={`View details for ${restaurant.name}`}
-                >
-                  View
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="p-4 bg-white shadow rounded-lg">
+      <h2 className="text-xl font-semibold mb-4">Data</h2>
+      <pre className="bg-gray-100 p-4 rounded">{JSON.stringify(data, null, 2)}</pre>
     </div>
   );
 };

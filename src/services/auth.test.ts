@@ -1,120 +1,126 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from src.services.auth import AuthService, LoginRequest, LoginResponse, ErrorResponse
+from src.services.auth import login, register, logout, getToken, isAuthenticated
 
-@pytest.fixture
-def auth_service():
-    return AuthService()
+# Mock data
+mock_login_data = {
+    "email": "test@example.com",
+    "password": "password123"
+}
 
-@pytest.fixture
-def login_request():
-    return {
-        "email": "test@example.com",
-        "password": "securepassword"
+mock_register_data = {
+    "name": "Test User",
+    "email": "test@example.com",
+    "password": "password123"
+}
+
+mock_auth_response = {
+    "token": "mockToken",
+    "user": {
+        "id": "1",
+        "name": "Test User",
+        "email": "test@example.com"
     }
+}
 
 @pytest.fixture
-def login_response():
-    return {
-        "token": "mocked_token",
-        "user": {
-            "id": "123",
-            "name": "Test User",
-            "email": "test@example.com"
-        }
-    }
+def mock_local_storage(mocker):
+    mocker.patch('src.services.auth.localStorage.getItem', return_value=None)
+    mocker.patch('src.services.auth.localStorage.setItem')
+    mocker.patch('src.services.auth.localStorage.removeItem')
 
 @pytest.fixture
-def error_response():
-    return {
-        "message": "Login failed"
-    }
+def mock_window_location(mocker):
+    mocker.patch('src.services.auth.window.location.href', new_callable=mocker.PropertyMock)
 
-@patch('src.services.auth.localStorage')
-@patch('src.services.auth.axios.create')
-def test_login_success(mock_axios_create, mock_local_storage, auth_service, login_request, login_response):
+@pytest.fixture
+def mock_axios_post(mocker):
+    return mocker.patch('src.services.auth.api.post')
+
+def test_login_success(mock_axios_post, mock_local_storage):
     # Arrange
-    mock_api = MagicMock()
-    mock_axios_create.return_value = mock_api
-    mock_api.post.return_value = MagicMock(status_code=200, data=login_response)
+    mock_axios_post.return_value = MagicMock(data=mock_auth_response)
 
     # Act
-    response = auth_service.login(login_request)
+    result = login(mock_login_data)
 
     # Assert
-    assert response == login_response
-    mock_local_storage.setItem.assert_called_once_with('token', login_response['token'])
+    mock_axios_post.assert_called_once_with('/auth/login', mock_login_data)
+    assert result == mock_auth_response
+    localStorage.setItem.assert_called_once_with('token', mock_auth_response['token'])
 
-@patch('src.services.auth.localStorage')
-@patch('src.services.auth.axios.create')
-def test_login_failure(mock_axios_create, mock_local_storage, auth_service, login_request, error_response):
+def test_login_failure(mock_axios_post, mock_local_storage):
     # Arrange
-    mock_api = MagicMock()
-    mock_axios_create.return_value = mock_api
-    mock_api.post.side_effect = Exception("Login failed")
+    mock_axios_post.side_effect = Exception("Login failed")
+
+    # Act & Assert
+    with pytest.raises(Exception, match='Login failed. Please check your credentials.'):
+        login(mock_login_data)
+
+def test_register_success(mock_axios_post, mock_local_storage):
+    # Arrange
+    mock_axios_post.return_value = MagicMock(data=mock_auth_response)
 
     # Act
-    response = auth_service.login(login_request)
+    result = register(mock_register_data)
 
     # Assert
-    assert response == error_response
-    mock_local_storage.setItem.assert_not_called()
+    mock_axios_post.assert_called_once_with('/auth/register', mock_register_data)
+    assert result == mock_auth_response
+    localStorage.setItem.assert_called_once_with('token', mock_auth_response['token'])
 
-@patch('src.services.auth.localStorage')
-def test_logout(auth_service, mock_local_storage):
+def test_register_failure(mock_axios_post, mock_local_storage):
     # Arrange
-    auth_service.token = "mocked_token"
+    mock_axios_post.side_effect = Exception("Registration failed")
 
+    # Act & Assert
+    with pytest.raises(Exception, match='Registration failed. Please try again.'):
+        register(mock_register_data)
+
+def test_logout(mock_local_storage, mock_window_location):
     # Act
-    auth_service.logout()
+    logout()
 
     # Assert
-    assert auth_service.token is None
-    mock_local_storage.removeItem.assert_called_once_with('token')
+    localStorage.removeItem.assert_called_once_with('token')
+    assert window.location.href == '/login'
 
-@patch('src.services.auth.axios.create')
-def test_fetch_user_profile_success(mock_axios_create, auth_service, login_response):
+def test_get_token(mock_local_storage):
     # Arrange
-    mock_api = MagicMock()
-    mock_axios_create.return_value = mock_api
-    mock_api.get.return_value = MagicMock(status_code=200, data=login_response['user'])
+    localStorage.getItem.return_value = 'mockToken'
 
     # Act
-    response = auth_service.fetchUserProfile()
+    token = getToken()
 
     # Assert
-    assert response == login_response['user']
+    assert token == 'mockToken'
 
-@patch('src.services.auth.axios.create')
-def test_fetch_user_profile_failure(mock_axios_create, auth_service, error_response):
+def test_get_token_no_token(mock_local_storage):
     # Arrange
-    mock_api = MagicMock()
-    mock_axios_create.return_value = mock_api
-    mock_api.get.side_effect = Exception("Failed to fetch user profile")
+    localStorage.getItem.return_value = None
 
     # Act
-    response = auth_service.fetchUserProfile()
+    token = getToken()
 
     # Assert
-    assert response == error_response
+    assert token is None
 
-def test_is_authenticated_true(auth_service):
+def test_is_authenticated_true(mock_local_storage):
     # Arrange
-    auth_service.token = "mocked_token"
+    localStorage.getItem.return_value = 'mockToken'
 
     # Act
-    result = auth_service.isAuthenticated()
+    result = isAuthenticated()
 
     # Assert
     assert result is True
 
-def test_is_authenticated_false(auth_service):
+def test_is_authenticated_false(mock_local_storage):
     # Arrange
-    auth_service.token = None
+    localStorage.getItem.return_value = None
 
     # Act
-    result = auth_service.isAuthenticated()
+    result = isAuthenticated()
 
     # Assert
     assert result is False
-```

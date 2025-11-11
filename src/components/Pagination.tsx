@@ -21,43 +21,40 @@ const Pagination: React.FC<PaginationProps> = ({ totalItems, itemsPerPage, curre
     if (page < 1 || page > totalPages) return;
     setLoading(true);
     setError(null);
-    axios.get(`/api/items?page=${page}&limit=${itemsPerPage}`)
-      .then(response => {
-        onPageChange(page);
-      })
-      .catch(err => {
-        setError('Failed to load data. Please try again.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    try {
+      onPageChange(page);
+    } catch (err) {
+      setError('Failed to change page');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderPageNumbers = () => {
-    const pages = [];
+    const pageNumbers = [];
     for (let i = 1; i <= totalPages; i++) {
-      pages.push(
+      pageNumbers.push(
         <button
           key={i}
           onClick={() => handlePageChange(i)}
-          className={`px-3 py-1 mx-1 rounded ${i === currentPage ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+          className={`mx-1 px-3 py-1 rounded ${currentPage === i ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
           aria-label={`Go to page ${i}`}
         >
           {i}
         </button>
       );
     }
-    return pages;
+    return pageNumbers;
   };
 
   return (
-    <div className="flex items-center justify-center mt-4">
-      {loading && <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-blue-500" role="status" aria-label="Loading"></div>}
+    <div className="flex justify-center items-center mt-4">
+      {loading && <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status" />}
       {error && <div className="text-red-500">{error}</div>}
       <button
         onClick={() => handlePageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+        className="mx-1 px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
         aria-label="Previous page"
       >
         Previous
@@ -66,7 +63,7 @@ const Pagination: React.FC<PaginationProps> = ({ totalItems, itemsPerPage, curre
       <button
         onClick={() => handlePageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="px-3 py-1 mx-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
+        className="mx-1 px-3 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
         aria-label="Next page"
       >
         Next

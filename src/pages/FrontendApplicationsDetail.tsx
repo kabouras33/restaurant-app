@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ApplicationDetail {
-  id: string;
+  id: number;
   name: string;
   description: string;
   status: string;
@@ -14,6 +15,7 @@ interface ApplicationDetail {
 const FrontendApplicationsDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [application, setApplication] = useState<ApplicationDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,27 +23,31 @@ const FrontendApplicationsDetail: React.FC = () => {
   useEffect(() => {
     const fetchApplicationDetail = async () => {
       try {
-        const response = await axios.get(`/api/applications/${id}`);
+        setLoading(true);
+        const response = await axios.get(`/api/applications/${id}`, {
+          headers: { Authorization: `Bearer ${user?.token}` },
+        });
         setApplication(response.data);
       } catch (err) {
-        setError('Failed to load application details.');
+        setError('Failed to load application details. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchApplicationDetail();
-  }, [id]);
+  }, [id, user]);
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this application?')) return;
 
     try {
-      await axios.delete(`/api/applications/${id}`);
-      alert('Application deleted successfully.');
+      await axios.delete(`/api/applications/${id}`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
       navigate('/applications');
     } catch (err) {
-      alert('Failed to delete the application.');
+      setError('Failed to delete application. Please try again later.');
     }
   };
 
@@ -54,30 +60,34 @@ const FrontendApplicationsDetail: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <header className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">{application?.name}</h1>
-        <button
-          onClick={handleDelete}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-        >
-          Delete
-        </button>
-      </header>
-      <div className="bg-white shadow-md rounded p-4">
-        <p><strong>Description:</strong> {application?.description}</p>
-        <p><strong>Status:</strong> {application?.status}</p>
-        <p><strong>Created At:</strong> {new Date(application?.createdAt || '').toLocaleString()}</p>
-        <p><strong>Updated At:</strong> {new Date(application?.updatedAt || '').toLocaleString()}</p>
-      </div>
-      <footer className="mt-4">
-        <button
-          onClick={() => navigate('/applications')}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Back to Applications
-        </button>
-      </footer>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Application Details</h1>
+      {application && (
+        <div className="bg-white shadow-md rounded-lg p-6">
+          <h2 className="text-xl font-semibold">{application.name}</h2>
+          <p className="text-gray-700 mt-2">{application.description}</p>
+          <div className="mt-4">
+            <span className="text-sm text-gray-500">Status: </span>
+            <span className={`text-sm font-medium ${application.status === 'active' ? 'text-green-500' : 'text-red-500'}`}>
+              {application.status}
+            </span>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={() => navigate(`/applications/edit/${application.id}`)}
+              className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
+            >
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              className="bg-red-500 text-white px-4 py-2 rounded"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

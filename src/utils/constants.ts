@@ -1,106 +1,85 @@
 import axios from 'axios';
 
 export const API_BASE_URL = 'https://api.yourrestaurantapp.com';
+export const STRIPE_PUBLIC_KEY = 'pk_test_1234567890abcdef';
 export const AUTH_TOKEN_KEY = 'authToken';
 
-// API Endpoints
-export const ENDPOINTS = {
-  LOGIN: `${API_BASE_URL}/auth/login`,
-  REGISTER: `${API_BASE_URL}/auth/register`,
-  RESERVATIONS: `${API_BASE_URL}/reservations`,
-  INVENTORY: `${API_BASE_URL}/inventory`,
-  NOTIFICATIONS: `${API_BASE_URL}/notifications`,
-  PAYMENTS: `${API_BASE_URL}/payments`,
-};
-
-// Error Messages
-export const ERROR_MESSAGES = {
-  NETWORK_ERROR: 'Network error, please try again later.',
-  UNAUTHORIZED: 'You are not authorized to perform this action.',
-  FORBIDDEN: 'Access to this resource is forbidden.',
-  NOT_FOUND: 'The requested resource was not found.',
-  SERVER_ERROR: 'An unexpected error occurred. Please try again later.',
-};
-
-// Success Messages
-export const SUCCESS_MESSAGES = {
-  LOGIN_SUCCESS: 'Login successful!',
-  REGISTER_SUCCESS: 'Registration successful!',
-  RESERVATION_CREATED: 'Reservation created successfully!',
-  INVENTORY_UPDATED: 'Inventory updated successfully!',
-};
-
-// Loading Messages
-export const LOADING_MESSAGES = {
-  LOADING: 'Loading, please wait...',
-  SAVING: 'Saving changes, please wait...',
-};
-
-// Validation Messages
-export const VALIDATION_MESSAGES = {
-  REQUIRED_FIELD: 'This field is required.',
-  INVALID_EMAIL: 'Please enter a valid email address.',
-  PASSWORD_MIN_LENGTH: 'Password must be at least 8 characters long.',
-};
-
-// Utility Functions
-export const getAuthToken = (): string | null => {
-  return localStorage.getItem(AUTH_TOKEN_KEY);
-};
-
-export const setAuthToken = (token: string): void => {
-  localStorage.setItem(AUTH_TOKEN_KEY, token);
-};
-
-export const removeAuthToken = (): void => {
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-};
-
-// Axios Instance
-export const axiosInstance = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = getAuthToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+export const fetchConfig = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/config`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching configuration:', error);
+    throw new Error('Failed to fetch configuration');
   }
-);
+};
 
-axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
+export const getAuthHeaders = () => {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+export const handleApiError = (error: any) => {
+  if (axios.isAxiosError(error)) {
     if (error.response) {
-      switch (error.response.status) {
-        case 401:
-          removeAuthToken();
-          window.location.href = '/login';
-          break;
-        case 403:
-          alert(ERROR_MESSAGES.FORBIDDEN);
-          break;
-        case 404:
-          alert(ERROR_MESSAGES.NOT_FOUND);
-          break;
-        case 500:
-          alert(ERROR_MESSAGES.SERVER_ERROR);
-          break;
-        default:
-          alert(ERROR_MESSAGES.NETWORK_ERROR);
-      }
-    } else {
-      alert(ERROR_MESSAGES.NETWORK_ERROR);
+      console.error('API Error:', error.response.data);
+      return error.response.data.message || 'An error occurred';
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+      return 'No response from server';
     }
-    return Promise.reject(error);
   }
-);
+  console.error('Unexpected error:', error);
+  return 'An unexpected error occurred';
+};
+
+export const validateEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
+export const validatePassword = (password: string): boolean => {
+  return password.length >= 8;
+};
+
+export const validateForm = (fields: Record<string, string>): Record<string, string> => {
+  const errors: Record<string, string> = {};
+  if (!validateEmail(fields.email)) {
+    errors.email = 'Invalid email address';
+  }
+  if (!validatePassword(fields.password)) {
+    errors.password = 'Password must be at least 8 characters';
+  }
+  return errors;
+};
+
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+};
+
+export const RESERVATION_STATUSES = {
+  PENDING: 'Pending',
+  CONFIRMED: 'Confirmed',
+  CANCELLED: 'Cancelled',
+};
+
+export const INVENTORY_CATEGORIES = [
+  'Appetizers',
+  'Main Courses',
+  'Desserts',
+  'Beverages',
+];
+
+export const NOTIFICATION_TYPES = {
+  EMAIL: 'Email',
+  SMS: 'SMS',
+  PUSH: 'Push Notification',
+};
+
+export const REPORT_TYPES = {
+  DAILY: 'Daily',
+  WEEKLY: 'Weekly',
+  MONTHLY: 'Monthly',
+};
+
+export const DEFAULT_PAGE_SIZE = 10;

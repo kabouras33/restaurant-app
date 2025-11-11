@@ -1,86 +1,127 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  content: string;
-  apiEndpoint: string;
+  onSubmit: (data: any) => Promise<void>;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, content, apiEndpoint }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, onSubmit }) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ name: '', email: '' });
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleOutsideClick = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         onClose();
       }
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-    } else {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    }
-
+    document.addEventListener('keydown', handleEscape);
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, onClose]);
+  }, [onClose]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!formData.name || !formData.email) {
+      setError('All fields are required.');
+      return;
+    }
     setLoading(true);
     setError(null);
-    setSuccess(null);
     try {
-      const response = await axios.post(apiEndpoint, { data: content });
-      setSuccess('Operation successful!');
+      await onSubmit(formData);
+      onClose();
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('Submission failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
       <div
         ref={modalRef}
-        className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 space-y-4"
+        className="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-md mx-4"
         role="dialog"
+        aria-modal="true"
         aria-labelledby="modal-title"
-        aria-describedby="modal-content"
       >
-        <h2 id="modal-title" className="text-xl font-semibold text-gray-800">
-          {title}
-        </h2>
-        <p id="modal-content" className="text-gray-600">
-          {content}
-        </p>
-        {error && <p className="text-red-500">{error}</p>}
-        {success && <p className="text-green-500">{success}</p>}
-        <div className="flex justify-end space-x-2">
+        <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900" id="modal-title">
+            {title}
+          </h3>
           <button
+            type="button"
+            className="text-gray-400 hover:text-gray-500"
             onClick={onClose}
-            className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            aria-label="Close"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={loading}
-          >
-            {loading ? 'Loading...' : 'Submit'}
+            <span aria-hidden="true">&times;</span>
           </button>
         </div>
+        <form onSubmit={handleSubmit} className="px-4 py-6">
+          <div className="mb-4">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+              Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div className="mb-4">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md mr-2"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md"
+              disabled={loading}
+            >
+              {loading ? 'Submitting...' : 'Submit'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

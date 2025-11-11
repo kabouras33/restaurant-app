@@ -1,11 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ApplicationData {
-  id: string;
+  id: number;
   name: string;
-  description: string;
   status: string;
+  createdAt: string;
 }
 
 interface UseFrontendApplicationsReturn {
@@ -13,69 +14,86 @@ interface UseFrontendApplicationsReturn {
   loading: boolean;
   error: string | null;
   fetchApplications: () => void;
-  createApplication: (data: Omit<ApplicationData, 'id'>) => Promise<void>;
-  updateApplication: (id: string, data: Partial<ApplicationData>) => Promise<void>;
-  deleteApplication: (id: string) => Promise<void>;
+  createApplication: (name: string) => Promise<void>;
+  updateApplicationStatus: (id: number, status: string) => Promise<void>;
 }
 
 const useFrontendApplications = (): UseFrontendApplicationsReturn => {
   const [applications, setApplications] = useState<ApplicationData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get<ApplicationData[]>('/api/applications');
+      const response = await axios.get('/api/applications', {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
       setApplications(response.data);
     } catch (err) {
       setError('Failed to fetch applications. Please try again later.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
-  const createApplication = useCallback(async (data: Omit<ApplicationData, 'id'>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axios.post<ApplicationData>('/api/applications', data);
-      setApplications((prev) => [...prev, response.data]);
-    } catch (err) {
-      setError('Failed to create application. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const createApplication = useCallback(
+    async (name: string) => {
+      if (!name) {
+        setError('Application name is required.');
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        await axios.post(
+          '/api/applications',
+          { name },
+          {
+            headers: { Authorization: `Bearer ${user?.token}` },
+          }
+        );
+        fetchApplications();
+      } catch (err) {
+        setError('Failed to create application. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, fetchApplications]
+  );
 
-  const updateApplication = useCallback(async (id: string, data: Partial<ApplicationData>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await axios.put<ApplicationData>(`/api/applications/${id}`, data);
-      setApplications((prev) =>
-        prev.map((app) => (app.id === id ? response.data : app))
-      );
-    } catch (err) {
-      setError('Failed to update application. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const updateApplicationStatus = useCallback(
+    async (id: number, status: string) => {
+      if (!id || !status) {
+        setError('Invalid application ID or status.');
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        await axios.patch(
+          `/api/applications/${id}`,
+          { status },
+          {
+            headers: { Authorization: `Bearer ${user?.token}` },
+          }
+        );
+        fetchApplications();
+      } catch (err) {
+        setError('Failed to update application status. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, fetchApplications]
+  );
 
-  const deleteApplication = useCallback(async (id: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await axios.delete(`/api/applications/${id}`);
-      setApplications((prev) => prev.filter((app) => app.id !== id));
-    } catch (err) {
-      setError('Failed to delete application. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
 
   return {
     applications,
@@ -83,8 +101,7 @@ const useFrontendApplications = (): UseFrontendApplicationsReturn => {
     error,
     fetchApplications,
     createApplication,
-    updateApplication,
-    deleteApplication,
+    updateApplicationStatus,
   };
 };
 

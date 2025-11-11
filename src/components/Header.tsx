@@ -1,89 +1,73 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
+interface HeaderProps {
+  title: string;
 }
 
-const Header: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState<boolean>(false);
+const Header: React.FC<HeaderProps> = ({ title }) => {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await axios.get('/api/user');
-        setUser(response.data);
-      } catch (err) {
-        setError('Failed to load user data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogout = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       await axios.post('/api/logout');
-      setUser(null);
+      logout();
       navigate('/login');
     } catch (err) {
-      setError('Logout failed');
+      setError('Failed to log out. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const toggleMenu = () => {
-    setMenuOpen(!menuOpen);
-  };
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-16 bg-gray-800 text-white">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="flex justify-center items-center h-16 bg-red-600 text-white">{error}</div>;
-  }
-
   return (
-    <header className="bg-gray-800 text-white">
+    <header className="bg-gray-800 text-white shadow-md">
       <div className="container mx-auto flex justify-between items-center p-4">
-        <Link to="/" className="text-xl font-bold">Restaurant App</Link>
-        <nav className="flex items-center">
-          <Link to="/dashboard" className="mx-2 hover:underline">Dashboard</Link>
-          <Link to="/reservations" className="mx-2 hover:underline">Reservations</Link>
-          <Link to="/inventory" className="mx-2 hover:underline">Inventory</Link>
-          <div className="relative">
-            <button
-              onClick={toggleMenu}
-              className="flex items-center focus:outline-none"
-              aria-haspopup="true"
-              aria-expanded={menuOpen}
-            >
-              <span className="mr-2">{user?.name}</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20">
+        <h1 className="text-2xl font-bold">{title}</h1>
+        <nav className="flex items-center space-x-4">
+          <Link to="/" className="hover:text-gray-300">Home</Link>
+          <Link to="/dashboard" className="hover:text-gray-300">Dashboard</Link>
+          {user ? (
+            <div className="relative">
+              <button
+                className="flex items-center space-x-2"
+                aria-haspopup="true"
+                aria-expanded="false"
+              >
+                <span>{user.name}</span>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div className="absolute right-0 mt-2 w-48 bg-white text-black rounded-md shadow-lg">
                 <button
                   onClick={handleLogout}
-                  className="block px-4 py-2 text-gray-800 hover:bg-gray-200 w-full text-left"
+                  className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                  disabled={isLoading}
                 >
-                  Logout
+                  {isLoading ? 'Logging out...' : 'Logout'}
                 </button>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <Link to="/login" className="hover:text-gray-300">Login</Link>
+          )}
         </nav>
       </div>
+      {error && <div className="bg-red-500 text-white text-center py-2">{error}</div>}
     </header>
   );
 };

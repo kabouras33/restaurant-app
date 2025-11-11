@@ -1,47 +1,40 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-interface FileUploadProps {
-  onUploadSuccess: (fileUrl: string) => void;
+interface SetUpFileStorageSolutionsProps {
+  onSuccess: (message: string) => void;
+  onError: (error: string) => void;
 }
 
-const SetUpFileStorageSolutions: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
-  const [file, setFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setFile(event.target.files[0]);
-    }
-  };
+const SetUpFileStorageSolutions: React.FC<SetUpFileStorageSolutionsProps> = ({ onSuccess, onError }) => {
+  const { user } = useAuth();
+  const [bucketName, setBucketName] = useState('');
+  const [region, setRegion] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!file) {
-      setError('Please select a file to upload.');
+    if (!bucketName || !region) {
+      onError('Bucket name and region are required.');
       return;
     }
 
     setLoading(true);
-    setError(null);
-
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await axios.post('/api/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await axios.post('/api/setup-s3', {
+        bucketName,
+        region,
+        userId: user?.id,
       });
 
-      onUploadSuccess(response.data.fileUrl);
-      navigate('/dashboard');
-    } catch (err) {
-      setError('Failed to upload file. Please try again.');
+      if (response.status === 200) {
+        onSuccess('S3 bucket configured successfully.');
+      } else {
+        onError('Failed to configure S3 bucket.');
+      }
+    } catch (error) {
+      onError('An error occurred while configuring S3 bucket.');
     } finally {
       setLoading(false);
     }
@@ -49,31 +42,47 @@ const SetUpFileStorageSolutions: React.FC<FileUploadProps> = ({ onUploadSuccess 
 
   return (
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Upload File to S3</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="file" className="block text-sm font-medium text-gray-700">
-            Choose file
+      <h2 className="text-2xl font-bold mb-4">Set Up File Storage Solutions</h2>
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="mb-4">
+          <label htmlFor="bucketName" className="block text-sm font-medium text-gray-700">
+            Bucket Name
           </label>
           <input
-            type="file"
-            id="file"
-            name="file"
-            accept="image/*,application/pdf"
-            onChange={handleFileChange}
-            className="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            type="text"
+            id="bucketName"
+            name="bucketName"
+            value={bucketName}
+            onChange={(e) => setBucketName(e.target.value)}
             required
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-        <button
-          type="submit"
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          disabled={loading}
-          aria-busy={loading}
-        >
-          {loading ? 'Uploading...' : 'Upload'}
-        </button>
+        <div className="mb-4">
+          <label htmlFor="region" className="block text-sm font-medium text-gray-700">
+            Region
+          </label>
+          <input
+            type="text"
+            id="region"
+            name="region"
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            required
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          />
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={loading}
+            className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
+              loading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
+            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+          >
+            {loading ? 'Configuring...' : 'Configure S3'}
+          </button>
+        </div>
       </form>
     </div>
   );

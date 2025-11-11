@@ -1,26 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CardProps {
-  id: string;
   title: string;
   description: string;
   imageUrl: string;
-  onAction: (id: string) => void;
+  itemId: string;
 }
 
-const Card: React.FC<CardProps> = ({ id, title, description, imageUrl, onAction }) => {
-  const [loading, setLoading] = useState<boolean>(false);
+const Card: React.FC<CardProps> = ({ title, description, imageUrl, itemId }) => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  const handleActionClick = async () => {
+  const handleAction = async () => {
+    if (!user) {
+      setError('You must be logged in to perform this action.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setSuccess(null);
+
     try {
-      await axios.post('/api/action', { id });
-      onAction(id);
+      const response = await axios.post('/api/action', { itemId }, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      });
+      setSuccess('Action completed successfully!');
     } catch (err) {
-      setError('Failed to perform action. Please try again.');
+      setError('An error occurred while performing the action.');
     } finally {
       setLoading(false);
     }
@@ -34,23 +47,18 @@ const Card: React.FC<CardProps> = ({ id, title, description, imageUrl, onAction 
         <p className="text-gray-700 text-base">{description}</p>
       </div>
       <div className="px-6 pt-4 pb-2">
-        {loading ? (
-          <button
-            className="bg-blue-500 text-white font-bold py-2 px-4 rounded opacity-50 cursor-not-allowed"
-            disabled
-          >
-            Loading...
-          </button>
-        ) : (
-          <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={handleActionClick}
-            aria-label={`Perform action on ${title}`}
-          >
-            Action
-          </button>
-        )}
+        <button
+          onClick={handleAction}
+          disabled={loading}
+          className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline ${
+            loading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+          aria-label={`Perform action on ${title}`}
+        >
+          {loading ? 'Processing...' : 'Perform Action'}
+        </button>
         {error && <p className="text-red-500 text-xs italic mt-2">{error}</p>}
+        {success && <p className="text-green-500 text-xs italic mt-2">{success}</p>}
       </div>
     </div>
   );

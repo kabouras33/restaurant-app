@@ -1,33 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-interface Option {
-  value: string;
-  label: string;
-}
-
 interface SelectProps {
   label: string;
-  name: string;
   apiEndpoint: string;
-  onChange: (value: string) => void;
+  onSelect: (value: string) => void;
+  defaultValue?: string;
   required?: boolean;
 }
 
-const Select: React.FC<SelectProps> = ({ label, name, apiEndpoint, onChange, required = false }) => {
+interface Option {
+  id: string;
+  name: string;
+}
+
+const Select: React.FC<SelectProps> = ({ label, apiEndpoint, onSelect, defaultValue, required = false }) => {
   const [options, setOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedValue, setSelectedValue] = useState<string>('');
+  const [selectedValue, setSelectedValue] = useState<string>(defaultValue || '');
 
   useEffect(() => {
     const fetchOptions = async () => {
       try {
+        setLoading(true);
         const response = await axios.get(apiEndpoint);
         setOptions(response.data);
-        setLoading(false);
+        setError(null);
       } catch (err) {
         setError('Failed to load options');
+      } finally {
         setLoading(false);
       }
     };
@@ -38,12 +40,12 @@ const Select: React.FC<SelectProps> = ({ label, name, apiEndpoint, onChange, req
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
     setSelectedValue(value);
-    onChange(value);
+    onSelect(value);
   };
 
   return (
     <div className="mb-4">
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-gray-700" htmlFor="select-component">
         {label}
       </label>
       {loading ? (
@@ -52,21 +54,19 @@ const Select: React.FC<SelectProps> = ({ label, name, apiEndpoint, onChange, req
         <div className="mt-2 text-red-500">{error}</div>
       ) : (
         <select
-          id={name}
-          name={name}
+          id="select-component"
+          className="mt-2 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           value={selectedValue}
           onChange={handleChange}
           required={required}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-          aria-required={required}
-          aria-invalid={!!error}
+          aria-label={label}
         >
           <option value="" disabled>
             Select an option
           </option>
           {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+            <option key={option.id} value={option.id}>
+              {option.name}
             </option>
           ))}
         </select>

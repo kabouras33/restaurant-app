@@ -1,43 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
-interface SecurityDetail {
+interface DeploymentDetail {
   id: number;
   name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
+  status: string;
+  lastTested: string;
+  securityLevel: string;
 }
 
 const TestingSecurityDeploymentDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [securityDetail, setSecurityDetail] = useState<SecurityDetail | null>(null);
+  const [deploymentDetail, setDeploymentDetail] = useState<DeploymentDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchSecurityDetail = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    const fetchDeploymentDetail = async () => {
       try {
-        const response = await axios.get(`/api/security/${id}`);
-        setSecurityDetail(response.data);
+        const response = await axios.get<DeploymentDetail>('/api/deployment/detail');
+        setDeploymentDetail(response.data);
       } catch (err) {
-        setError('Failed to load security detail.');
+        setError('Failed to load deployment details.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSecurityDetail();
-  }, [id]);
+    fetchDeploymentDetail();
+  }, [user, navigate]);
 
-  const handleDelete = async () => {
+  const handleUpdate = async (updatedDetail: DeploymentDetail) => {
     try {
-      await axios.delete(`/api/security/${id}`);
-      navigate('/dashboard');
+      setLoading(true);
+      await axios.put(`/api/deployment/${updatedDetail.id}`, updatedDetail);
+      setDeploymentDetail(updatedDetail);
+      alert('Deployment details updated successfully.');
     } catch (err) {
-      setError('Failed to delete security detail.');
+      setError('Failed to update deployment details.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -50,27 +60,58 @@ const TestingSecurityDeploymentDetail: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <header className="mb-4">
-        <h1 className="text-2xl font-bold">{securityDetail?.name}</h1>
-        <p className="text-gray-600">{securityDetail?.description}</p>
-      </header>
-      <div className="mb-4">
-        <button
-          onClick={handleDelete}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-        >
-          Delete
-        </button>
-      </div>
-      <footer className="mt-8">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Back to Dashboard
-        </button>
-      </footer>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Deployment Detail</h1>
+      {deploymentDetail && (
+        <div className="bg-white shadow-md rounded p-4">
+          <div className="mb-4">
+            <label className="block text-gray-700">Name:</label>
+            <input
+              type="text"
+              className="mt-1 block w-full border border-gray-300 rounded p-2"
+              value={deploymentDetail.name}
+              onChange={(e) => setDeploymentDetail({ ...deploymentDetail, name: e.target.value })}
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-700">Status:</label>
+            <input
+              type="text"
+              className="mt-1 block w-full border border-gray-300 rounded p-2"
+              value={deploymentDetail.status}
+              onChange={(e) => setDeploymentDetail({ ...deploymentDetail, status: e.target.value })}
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-700">Last Tested:</label>
+            <input
+              type="date"
+              className="mt-1 block w-full border border-gray-300 rounded p-2"
+              value={deploymentDetail.lastTested}
+              onChange={(e) => setDeploymentDetail({ ...deploymentDetail, lastTested: e.target.value })}
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-700">Security Level:</label>
+            <input
+              type="text"
+              className="mt-1 block w-full border border-gray-300 rounded p-2"
+              value={deploymentDetail.securityLevel}
+              onChange={(e) => setDeploymentDetail({ ...deploymentDetail, securityLevel: e.target.value })}
+              required
+            />
+          </div>
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded"
+            onClick={() => handleUpdate(deploymentDetail)}
+          >
+            Update
+          </button>
+        </div>
+      )}
     </div>
   );
 };

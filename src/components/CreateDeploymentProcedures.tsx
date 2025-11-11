@@ -1,51 +1,43 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DeploymentProcedure {
   name: string;
   description: string;
-  steps: string[];
+  steps: string;
 }
 
 const CreateDeploymentProcedures: React.FC = () => {
-  const [procedure, setProcedure] = useState<DeploymentProcedure>({
+  const [formData, setFormData] = useState<DeploymentProcedure>({
     name: '',
     description: '',
-    steps: [''],
+    steps: '',
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    if (name === 'steps' && index !== undefined) {
-      const newSteps = [...procedure.steps];
-      newSteps[index] = value;
-      setProcedure({ ...procedure, steps: newSteps });
-    } else {
-      setProcedure({ ...procedure, [name]: value });
-    }
+    setFormData({ ...formData, [name]: value });
   };
 
-  const addStep = () => {
-    setProcedure({ ...procedure, steps: [...procedure.steps, ''] });
-  };
-
-  const removeStep = (index: number) => {
-    const newSteps = procedure.steps.filter((_, i) => i !== index);
-    setProcedure({ ...procedure, steps: newSteps });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuccess(null);
+
     try {
-      const response = await axios.post('/api/deployment-procedures', procedure);
+      const response = await axios.post('/api/deployment-procedures', formData, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      });
       setSuccess('Deployment procedure created successfully!');
       setTimeout(() => navigate('/dashboard'), 2000);
     } catch (err) {
@@ -57,73 +49,55 @@ const CreateDeploymentProcedures: React.FC = () => {
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h1 className="text-2xl font-bold mb-4">Create Deployment Procedure</h1>
+      <h2 className="text-2xl font-bold mb-4">Create Deployment Procedure</h2>
       {error && <div className="text-red-500 mb-4">{error}</div>}
       {success && <div className="text-green-500 mb-4">{success}</div>}
-      <form onSubmit={handleSubmit} noValidate>
-        <div className="mb-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Procedure Name
+            Name
           </label>
           <input
             type="text"
             id="name"
             name="name"
-            value={procedure.name}
-            onChange={handleInputChange}
+            value={formData.name}
+            onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
-        <div className="mb-4">
+        <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700">
             Description
           </label>
           <textarea
             id="description"
             name="description"
-            value={procedure.description}
-            onChange={handleInputChange}
+            value={formData.description}
+            onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Steps</label>
-          {procedure.steps.map((step, index) => (
-            <div key={index} className="flex items-center mb-2">
-              <input
-                type="text"
-                name="steps"
-                value={step}
-                onChange={(e) => handleInputChange(e, index)}
-                required
-                className="flex-1 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => removeStep(index)}
-                className="ml-2 text-red-500 hover:text-red-700"
-                aria-label={`Remove step ${index + 1}`}
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addStep}
-            className="mt-2 text-indigo-500 hover:text-indigo-700"
-            aria-label="Add step"
-          >
-            Add Step
-          </button>
+        <div>
+          <label htmlFor="steps" className="block text-sm font-medium text-gray-700">
+            Steps
+          </label>
+          <textarea
+            id="steps"
+            name="steps"
+            value={formData.steps}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+          />
         </div>
-        <div className="flex justify-end">
+        <div>
           <button
             type="submit"
             disabled={loading}
-            className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
+            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
               loading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
             } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
           >

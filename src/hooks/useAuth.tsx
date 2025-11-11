@@ -1,12 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-
-interface AuthState {
-  isAuthenticated: boolean;
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-}
+import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -14,111 +8,74 @@ interface User {
   email: string;
 }
 
-interface AuthResponse {
-  token: string;
-  user: User;
+interface AuthState {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
 }
 
 const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
-    isAuthenticated: false,
     user: null,
     loading: false,
     error: null,
   });
+  const navigate = useNavigate();
 
   const login = useCallback(async (email: string, password: string) => {
-    setAuthState((prevState) => ({ ...prevState, loading: true, error: null }));
+    setAuthState({ ...authState, loading: true, error: null });
     try {
-      const response = await axios.post<AuthResponse>('/api/auth/login', { email, password });
+      const response = await axios.post('/api/auth/login', { email, password });
+      setAuthState({ user: response.data.user, loading: false, error: null });
+      navigate('/dashboard');
+    } catch (error: any) {
       setAuthState({
-        isAuthenticated: true,
-        user: response.data.user,
-        loading: false,
-        error: null,
-      });
-      localStorage.setItem('token', response.data.token);
-    } catch (error) {
-      setAuthState({
-        isAuthenticated: false,
         user: null,
         loading: false,
-        error: 'Login failed. Please check your credentials.',
+        error: error.response?.data?.message || 'Login failed',
       });
     }
-  }, []);
+  }, [authState, navigate]);
 
-  const logout = useCallback(() => {
-    setAuthState({
-      isAuthenticated: false,
-      user: null,
-      loading: false,
-      error: null,
-    });
-    localStorage.removeItem('token');
-  }, []);
-
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    setAuthState((prevState) => ({ ...prevState, loading: true, error: null }));
+  const logout = useCallback(async () => {
+    setAuthState({ ...authState, loading: true, error: null });
     try {
-      const response = await axios.post<AuthResponse>('/api/auth/register', { name, email, password });
+      await axios.post('/api/auth/logout');
+      setAuthState({ user: null, loading: false, error: null });
+      navigate('/login');
+    } catch (error: any) {
       setAuthState({
-        isAuthenticated: true,
-        user: response.data.user,
+        ...authState,
         loading: false,
-        error: null,
-      });
-      localStorage.setItem('token', response.data.token);
-    } catch (error) {
-      setAuthState({
-        isAuthenticated: false,
-        user: null,
-        loading: false,
-        error: 'Registration failed. Please try again.',
+        error: error.response?.data?.message || 'Logout failed',
       });
     }
-  }, []);
+  }, [authState, navigate]);
 
-  const checkAuth = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setAuthState({
-        isAuthenticated: false,
-        user: null,
-        loading: false,
-        error: null,
-      });
-      return;
-    }
-
-    setAuthState((prevState) => ({ ...prevState, loading: true, error: null }));
+  const checkAuthStatus = useCallback(async () => {
+    setAuthState({ ...authState, loading: true, error: null });
     try {
-      const response = await axios.get<User>('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await axios.get('/api/auth/status');
+      setAuthState({ user: response.data.user, loading: false, error: null });
+    } catch (error: any) {
       setAuthState({
-        isAuthenticated: true,
-        user: response.data,
-        loading: false,
-        error: null,
-      });
-    } catch (error) {
-      setAuthState({
-        isAuthenticated: false,
         user: null,
         loading: false,
-        error: 'Session expired. Please log in again.',
+        error: error.response?.data?.message || 'Failed to verify authentication status',
       });
-      localStorage.removeItem('token');
     }
-  }, []);
+  }, [authState]);
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   return {
-    authState,
+    user: authState.user,
+    loading: authState.loading,
+    error: authState.error,
     login,
     logout,
-    register,
-    checkAuth,
   };
 };
 

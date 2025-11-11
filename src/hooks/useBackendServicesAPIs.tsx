@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ApiResponse<T> {
   data: T | null;
@@ -7,44 +8,109 @@ interface ApiResponse<T> {
   loading: boolean;
 }
 
-interface FetchOptions {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  url: string;
-  data?: any;
-  headers?: Record<string, string>;
+interface Reservation {
+  id: number;
+  name: string;
+  date: string;
+  time: string;
+  guests: number;
+}
+
+interface InventoryItem {
+  id: number;
+  name: string;
+  quantity: number;
 }
 
 const useBackendServicesAPIs = () => {
-  const [response, setResponse] = useState<ApiResponse<any>>({
-    data: null,
-    error: null,
-    loading: false,
-  });
+  const { user } = useAuth();
 
-  const fetchData = useCallback(async (options: FetchOptions) => {
-    setResponse({ data: null, error: null, loading: true });
+  const fetchReservations = useCallback(async (): Promise<ApiResponse<Reservation[]>> => {
+    const [data, setData] = useState<Reservation[] | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+
+    setLoading(true);
     try {
-      const res = await axios({
-        method: options.method,
-        url: options.url,
-        data: options.data,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+      const response = await axios.get('/api/reservations', {
+        headers: { Authorization: `Bearer ${user?.token}` },
       });
-      setResponse({ data: res.data, error: null, loading: false });
-    } catch (error) {
-      const err = error as AxiosError;
-      setResponse({
-        data: null,
-        error: err.response?.data?.message || err.message,
-        loading: false,
-      });
+      setData(response.data);
+    } catch (err) {
+      setError('Failed to fetch reservations');
+    } finally {
+      setLoading(false);
     }
-  }, []);
 
-  return { response, fetchData };
+    return { data, error, loading };
+  }, [user]);
+
+  const createReservation = useCallback(async (reservation: Omit<Reservation, 'id'>): Promise<ApiResponse<Reservation>> => {
+    const [data, setData] = useState<Reservation | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+
+    setLoading(true);
+    try {
+      const response = await axios.post('/api/reservations', reservation, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      setData(response.data);
+    } catch (err) {
+      setError('Failed to create reservation');
+    } finally {
+      setLoading(false);
+    }
+
+    return { data, error, loading };
+  }, [user]);
+
+  const fetchInventory = useCallback(async (): Promise<ApiResponse<InventoryItem[]>> => {
+    const [data, setData] = useState<InventoryItem[] | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/inventory', {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      setData(response.data);
+    } catch (err) {
+      setError('Failed to fetch inventory');
+    } finally {
+      setLoading(false);
+    }
+
+    return { data, error, loading };
+  }, [user]);
+
+  const updateInventoryItem = useCallback(async (item: InventoryItem): Promise<ApiResponse<InventoryItem>> => {
+    const [data, setData] = useState<InventoryItem | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState<boolean>(false);
+
+    setLoading(true);
+    try {
+      const response = await axios.put(`/api/inventory/${item.id}`, item, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      setData(response.data);
+    } catch (err) {
+      setError('Failed to update inventory item');
+    } finally {
+      setLoading(false);
+    }
+
+    return { data, error, loading };
+  }, [user]);
+
+  return {
+    fetchReservations,
+    createReservation,
+    fetchInventory,
+    updateInventoryItem,
+  };
 };
 
 export default useBackendServicesAPIs;

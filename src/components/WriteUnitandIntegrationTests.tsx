@@ -1,71 +1,94 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-interface TestComponentProps {
-  apiUrl: string;
+interface TestResult {
+  id: number;
+  componentName: string;
+  status: 'passed' | 'failed';
+  message: string;
 }
 
-const TestComponent: React.FC<TestComponentProps> = ({ apiUrl }) => {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+const WriteUnitAndIntegrationTests: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(apiUrl);
-        setData(response.data);
-      } catch (err) {
-        setError('Failed to fetch data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [apiUrl]);
+    if (!user) {
+      navigate('/login');
+    } else {
+      fetchTestResults();
+    }
+  }, [user, navigate]);
 
-  if (loading) return <div className="spinner">Loading...</div>;
-  if (error) return <div className="error">{error}</div>;
+  const fetchTestResults = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.get<TestResult[]>('/api/tests/results');
+      setTestResults(response.data);
+    } catch (err) {
+      setError('Failed to load test results. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const retryTest = async (testId: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await axios.post(`/api/tests/retry/${testId}`);
+      fetchTestResults();
+    } catch (err) {
+      setError('Failed to retry test. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold">Data List</h1>
-      <ul className="list-disc pl-5">
-        {data.map((item, index) => (
-          <li key={index} className="py-1">
-            {item.name}
-          </li>
-        ))}
-      </ul>
+    <div className="p-6 bg-white shadow-md rounded-lg">
+      <h1 className="text-2xl font-bold mb-4">Unit and Integration Tests</h1>
+      {loading && <div className="text-center">Loading...</div>}
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+      <table className="min-w-full bg-white">
+        <thead>
+          <tr>
+            <th className="py-2 px-4 border-b">Component</th>
+            <th className="py-2 px-4 border-b">Status</th>
+            <th className="py-2 px-4 border-b">Message</th>
+            <th className="py-2 px-4 border-b">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {testResults.map((result) => (
+            <tr key={result.id}>
+              <td className="py-2 px-4 border-b">{result.componentName}</td>
+              <td className={`py-2 px-4 border-b ${result.status === 'passed' ? 'text-green-500' : 'text-red-500'}`}>
+                {result.status}
+              </td>
+              <td className="py-2 px-4 border-b">{result.message}</td>
+              <td className="py-2 px-4 border-b">
+                {result.status === 'failed' && (
+                  <button
+                    onClick={() => retryTest(result.id)}
+                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                  >
+                    Retry
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
 
-describe('TestComponent', () => {
-  it('renders loading state initially', () => {
-    render(<TestComponent apiUrl="/api/data" />);
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
-  });
-
-  it('renders data after successful fetch', async () => {
-    axios.get = jest.fn().mockResolvedValue({
-      data: [{ name: 'Item 1' }, { name: 'Item 2' }],
-    });
-
-    render(<TestComponent apiUrl="/api/data" />);
-    await waitFor(() => expect(screen.getByText(/item 1/i)).toBeInTheDocument());
-    expect(screen.getByText(/item 2/i)).toBeInTheDocument();
-  });
-
-  it('renders error message on fetch failure', async () => {
-    axios.get = jest.fn().mockRejectedValue(new Error('Network Error'));
-
-    render(<TestComponent apiUrl="/api/data" />);
-    await waitFor(() => expect(screen.getByText(/failed to fetch data/i)).toBeInTheDocument());
-  });
-});
-
-export default TestComponent;
+export default WriteUnitAndIntegrationTests;

@@ -1,118 +1,184 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface IntegrationFeature {
   id: number;
   name: string;
   description: string;
-  isActive: boolean;
+  enabled: boolean;
 }
 
 const IntegrationsAdvancedFeaturesForm: React.FC = () => {
-  const [feature, setFeature] = useState<IntegrationFeature | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [features, setFeatures] = useState<IntegrationFeature[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Partial<IntegrationFeature>>({
     name: '',
     description: '',
-    isActive: false,
+    enabled: false,
   });
-  const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
 
   useEffect(() => {
-    if (id) {
-      setLoading(true);
-      axios.get(`/api/integrations/${id}`)
-        .then(response => {
-          setFeature(response.data);
-          setFormData({
-            name: response.data.name,
-            description: response.data.description,
-            isActive: response.data.isActive,
-          });
-        })
-        .catch(err => setError('Failed to load feature'))
-        .finally(() => setLoading(false));
+    if (!user) {
+      navigate('/login');
+    } else {
+      fetchFeatures();
     }
-  }, [id]);
+  }, [user]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+  const fetchFeatures = async () => {
+    try {
+      const response = await axios.get('/api/integrations');
+      setFeatures(response.data);
+    } catch (err) {
+      setError('Failed to load features.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [name]: type === 'checkbox' ? checked : value,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
+    if (!formData.name || !formData.description) {
+      setError('Please fill in all required fields.');
+      return;
+    }
+    try {
+      setLoading(true);
+      if (formData.id) {
+        await axios.put(`/api/integrations/${formData.id}`, formData);
+      } else {
+        await axios.post('/api/integrations', formData);
+      }
+      setFormData({ name: '', description: '', enabled: false });
+      fetchFeatures();
+      setError(null);
+    } catch (err) {
+      setError('Failed to save feature.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const request = id
-      ? axios.put(`/api/integrations/${id}`, formData)
-      : axios.post('/api/integrations', formData);
+  const handleEdit = (feature: IntegrationFeature) => {
+    setFormData(feature);
+  };
 
-    request
-      .then(() => {
-        navigate('/dashboard');
-      })
-      .catch(err => setError('Failed to save feature'))
-      .finally(() => setLoading(false));
+  const handleDelete = async (id: number) => {
+    try {
+      setLoading(true);
+      await axios.delete(`/api/integrations/${id}`);
+      fetchFeatures();
+    } catch (err) {
+      setError('Failed to delete feature.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">{id ? 'Edit Feature' : 'Create Feature'}</h1>
-      {loading && <div className="text-center">Loading...</div>}
-      {error && <div className="text-red-500">{error}</div>}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Feature Name</label>
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Integrations & Advanced Features</h1>
+      {error && <div className="bg-red-100 text-red-700 p-2 mb-4">{error}</div>}
+      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="name">
+            Feature Name
+          </label>
           <input
             type="text"
             id="name"
             name="name"
             value={formData.name}
-            onChange={handleChange}
+            onChange={handleInputChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           />
         </div>
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="description">
+            Description
+          </label>
           <textarea
             id="description"
             name="description"
             value={formData.description}
-            onChange={handleChange}
+            onChange={handleInputChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           />
         </div>
-        <div className="flex items-center">
+        <div className="mb-4">
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="enabled">
+            Enabled
+          </label>
           <input
             type="checkbox"
-            id="isActive"
-            name="isActive"
-            checked={formData.isActive}
-            onChange={handleChange}
-            className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            id="enabled"
+            name="enabled"
+            checked={formData.enabled}
+            onChange={handleInputChange}
+            className="mr-2 leading-tight"
           />
-          <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">Active</label>
         </div>
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between">
           <button
             type="submit"
-            disabled={loading}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
           >
-            {id ? 'Update' : 'Create'}
+            {formData.id ? 'Update Feature' : 'Add Feature'}
           </button>
         </div>
       </form>
+      {loading ? (
+        <div className="text-center">Loading...</div>
+      ) : (
+        <table className="min-w-full bg-white">
+          <thead>
+            <tr>
+              <th className="py-2">Name</th>
+              <th className="py-2">Description</th>
+              <th className="py-2">Enabled</th>
+              <th className="py-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {features.map((feature) => (
+              <tr key={feature.id}>
+                <td className="border px-4 py-2">{feature.name}</td>
+                <td className="border px-4 py-2">{feature.description}</td>
+                <td className="border px-4 py-2">{feature.enabled ? 'Yes' : 'No'}</td>
+                <td className="border px-4 py-2">
+                  <button
+                    onClick={() => handleEdit(feature)}
+                    className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded mr-2"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(feature.id)}
+                    className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

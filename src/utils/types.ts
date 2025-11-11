@@ -1,132 +1,92 @@
-import React from 'react';
-import { AxiosError } from 'axios';
+import { ReactNode } from 'react';
 
-// User-related types
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'owner' | 'staff';
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  role: 'admin' | 'staff' | 'customer';
 }
 
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  isAuthenticated: boolean;
-  loading: boolean;
-  error: string | null;
 }
 
-// Restaurant-related types
-export interface Restaurant {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  email: string;
-  owner: User;
-  createdAt: string;
-  updatedAt: string;
+export interface RouteProps {
+  children: ReactNode;
+  path: string;
+  exact?: boolean;
 }
 
-export interface MenuItem {
+export interface InventoryItem {
   id: string;
   name: string;
   description: string;
   price: number;
-  available: boolean;
-  restaurantId: string;
-  createdAt: string;
-  updatedAt: string;
+  quantity: number;
+  imageUrl: string;
 }
 
 export interface Reservation {
   id: string;
   customerName: string;
-  customerEmail: string;
   date: string;
   time: string;
   numberOfGuests: number;
-  restaurantId: string;
-  createdAt: string;
-  updatedAt: string;
+  specialRequests?: string;
 }
 
-// Inventory-related types
-export interface InventoryItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unit: string;
-  restaurantId: string;
-  createdAt: string;
-  updatedAt: string;
+export interface PaymentDetails {
+  amount: number;
+  currency: string;
+  paymentMethodId: string;
 }
 
-// Notification types
 export interface Notification {
   id: string;
   message: string;
-  type: 'info' | 'warning' | 'error' | 'success';
+  type: 'success' | 'error' | 'info';
   read: boolean;
-  createdAt: string;
 }
 
-// API response types
 export interface ApiResponse<T> {
   data: T;
-  message: string;
-  success: boolean;
+  error?: string;
 }
 
-export interface ApiError extends AxiosError {
-  response: {
-    data: {
-      message: string;
-    };
-  };
+export interface LoadingState {
+  loading: boolean;
+  error?: string;
 }
 
-// Form validation types
-export interface FormValidationErrors {
-  [key: string]: string;
+export interface FormValidation {
+  isValid: boolean;
+  errors: Record<string, string>;
 }
 
-// Subscription types
-export interface Subscription {
-  id: string;
-  userId: string;
-  plan: 'basic' | 'premium' | 'enterprise';
-  status: 'active' | 'inactive' | 'canceled';
-  startDate: string;
-  endDate: string;
+export interface TableProps<T> {
+  data: T[];
+  columns: Column<T>[];
+  loading: boolean;
+  error?: string;
 }
 
-// Payment types
-export interface Payment {
-  id: string;
-  amount: number;
-  currency: string;
-  status: 'pending' | 'completed' | 'failed';
-  method: 'credit_card' | 'paypal' | 'stripe';
-  createdAt: string;
-  updatedAt: string;
+export interface Column<T> {
+  header: string;
+  accessor: keyof T;
+  render?: (item: T) => ReactNode;
 }
 
-export interface PaymentResponse {
-  success: boolean;
-  message: string;
-  paymentId: string;
+export interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
 }
 
-export interface PaymentError {
-  code: string;
-  message: string;
+export interface NotificationContextType {
+  notifications: Notification[];
+  addNotification: (message: string, type: 'success' | 'error' | 'info') => void;
+  removeNotification: (id: string) => void;
 }
-
-export default {};

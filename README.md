@@ -3,16 +3,16 @@
 
 ## Project Overview
 
-Restaurant App is a comprehensive web application designed to streamline restaurant management. This software provides a robust dashboard for restaurant owners, allowing them to manage inventory and reservations efficiently. The application is subscription-based, offering various features tailored to enhance operational efficiency and improve customer service. 
+Restaurant App is a comprehensive restaurant management software designed as a web application. It provides restaurant owners with a powerful dashboard to manage their inventory and reservations efficiently. The application operates on a subscription model, allowing owners to access a suite of tools to streamline their operations. Built with a modern tech stack, Restaurant App ensures a seamless user experience and robust functionality.
 
 ## Features
 
-- **Subscription-Based Access**: Restaurant owners can subscribe to access the management dashboard.
-- **Inventory Management**: Track and manage stock levels, suppliers, and inventory costs.
-- **Reservation Management**: Simplify table reservations and manage customer bookings.
-- **Real-Time Notifications**: Stay updated with instant notifications for reservations and inventory alerts.
-- **Responsive Design**: Optimized for both mobile and desktop use.
-- **Admin Dashboard**: Manage users, settings, and view analytics.
+- **User Authentication and Authorization**: Secure login and role-based access control for restaurant staff.
+- **Inventory Management**: Track and manage stock levels, supplier information, and order history.
+- **Reservation Management**: Handle table bookings, customer preferences, and reservation schedules.
+- **Payment Processing with Stripe**: Integrated payment gateway for processing subscription fees.
+- **Reporting and Analytics**: Generate insights and reports on sales, inventory usage, and customer trends.
+- **Real-time Notifications**: Alerts for low inventory, new reservations, and other critical updates.
 
 ## Tech Stack
 
@@ -22,25 +22,24 @@ Restaurant App is a comprehensive web application designed to streamline restaur
   - Tailwind CSS
   - Vite
 
-- **Backend**: 
+- **Backend**:
   - Python
   - FastAPI
   - Pydantic
   - SQLAlchemy
 
-- **Database**: 
+- **Database**:
   - PostgreSQL
 
-- **Testing**: 
+- **Testing**:
   - Pytest
   - React Testing Library
-  - Jest
 
-- **Deployment**: 
+- **Deployment**:
   - Docker
   - Docker Compose
   - AWS EC2
-  - GitHub Actions
+  - Cloudflare
 
 ## Installation Instructions
 
@@ -51,15 +50,17 @@ Restaurant App is a comprehensive web application designed to streamline restaur
    ```
 
 2. **Set Up the Backend**:
-   - Create a virtual environment:
+   - Ensure you have Python and PostgreSQL installed.
+   - Create a virtual environment and activate it:
      ```bash
-     python3 -m venv venv
-     source venv/bin/activate
+     python -m venv venv
+     source venv/bin/activate  # On Windows use `venv\Scripts\activate`
      ```
-   - Install the required packages:
+   - Install the backend dependencies:
      ```bash
      pip install -r backend/requirements.txt
      ```
+   - Set up the PostgreSQL database and configure the connection settings in `backend/config.py`.
 
 3. **Set Up the Frontend**:
    - Navigate to the frontend directory and install dependencies:
@@ -68,68 +69,71 @@ Restaurant App is a comprehensive web application designed to streamline restaur
      npm install
      ```
 
-4. **Configure Environment Variables**:
-   - Create a `.env` file in the root directory and configure your environment variables for both frontend and backend.
-
-5. **Run the Application**:
+4. **Run the Application**:
    - Start the backend server:
      ```bash
-     cd backend
-     uvicorn main:app --reload
+     uvicorn backend.main:app --reload
      ```
    - Start the frontend development server:
      ```bash
-     cd frontend
      npm run dev
      ```
 
 ## Usage Guide
 
-- **Access the Dashboard**: After setting up, navigate to `http://localhost:3000` to access the dashboard.
-- **Admin Access**: Use the admin credentials provided during setup to manage users and settings.
+- Access the application by navigating to `http://localhost:3000` in your web browser.
+- Register as a new user or log in with existing credentials.
+- Use the dashboard to manage inventory, reservations, and view reports.
 
 ## API Documentation
 
-The backend API is documented using OpenAPI. After starting the backend server, access the API documentation at `http://localhost:8000/docs`.
+The API is documented using FastAPI's interactive documentation. Once the backend server is running, access the API docs at `http://localhost:8000/docs`.
 
 ## Testing Instructions
 
-1. **Backend Testing**:
-   - Run tests using Pytest:
+1. **Backend Tests**:
+   - Ensure the virtual environment is activated.
+   - Run Pytest:
      ```bash
-     cd backend
-     pytest
+     pytest backend/tests
      ```
 
-2. **Frontend Testing**:
-   - Run tests using Jest and React Testing Library:
+2. **Frontend Tests**:
+   - Navigate to the frontend directory:
      ```bash
      cd frontend
+     ```
+   - Run the tests:
+     ```bash
      npm test
      ```
 
 ## Deployment Guide
 
-1. **Docker Deployment**:
-   - Build and run the Docker containers using Docker Compose:
+1. **Docker Setup**:
+   - Ensure Docker and Docker Compose are installed.
+   - Build and run the containers:
      ```bash
      docker-compose up --build
      ```
 
 2. **AWS EC2 Deployment**:
-   - Set up an EC2 instance and configure it to run Docker containers.
-   - Use GitHub Actions for CI/CD to automate deployments.
+   - Set up an EC2 instance and configure security groups.
+   - Deploy the Docker containers to the EC2 instance.
+
+3. **Cloudflare Configuration**:
+   - Set up DNS records and SSL certificates using Cloudflare for secure access.
 
 ## Contributing Guidelines
 
-We welcome contributions from the community. To contribute:
+We welcome contributions! Please follow these steps:
 
 1. Fork the repository.
-2. Create a new branch for your feature or bug fix.
+2. Create a new branch for your feature or bugfix.
 3. Commit your changes and push to your fork.
-4. Submit a pull request with a detailed description of your changes.
+4. Create a pull request with a detailed description of your changes.
 
-## License
+## License Information
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 ```

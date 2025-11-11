@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ServiceFormData {
-  id?: number;
   name: string;
   description: string;
   endpoint: string;
@@ -11,6 +11,9 @@ interface ServiceFormData {
 }
 
 const BackendServicesAPIsForm: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState<ServiceFormData>({
     name: '',
     description: '',
@@ -19,101 +22,110 @@ const BackendServicesAPIsForm: React.FC = () => {
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
 
   useEffect(() => {
     if (id) {
-      setLoading(true);
-      axios.get(`/api/services/${id}`)
-        .then(response => {
-          setFormData(response.data);
-          setLoading(false);
-        })
-        .catch(err => {
-          setError('Failed to load service data.');
-          setLoading(false);
-        });
+      fetchServiceData();
     }
   }, [id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prevState => ({ ...prevState, [name]: value }));
+  const fetchServiceData = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`/api/services/${id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      setFormData(response.data);
+    } catch (err) {
+      setError('Failed to load service data.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
-
-    const apiCall = id ? axios.put : axios.post;
-    const url = id ? `/api/services/${id}` : '/api/services';
-
-    apiCall(url, formData)
-      .then(() => {
-        setSuccess('Service saved successfully.');
-        setLoading(false);
-        setTimeout(() => navigate('/dashboard'), 2000);
-      })
-      .catch(err => {
-        setError('Failed to save service.');
-        setLoading(false);
-      });
+    try {
+      if (id) {
+        await axios.put(`/api/services/${id}`, formData, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+      } else {
+        await axios.post('/api/services', formData, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Failed to save service data.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
+    <div className="max-w-2xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">{id ? 'Edit Service' : 'Create Service'}</h1>
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-      {success && <p className="text-green-500">{success}</p>}
-      <form onSubmit={handleSubmit} noValidate>
-        <div className="mb-4">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Service Name</label>
+      {error && <div className="bg-red-100 text-red-700 p-2 mb-4">{error}</div>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            Service Name
+          </label>
           <input
             type="text"
             id="name"
             name="name"
             value={formData.name}
-            onChange={handleChange}
+            onChange={handleInputChange}
             required
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+            Description
+          </label>
           <textarea
             id="description"
             name="description"
             value={formData.description}
-            onChange={handleChange}
+            onChange={handleInputChange}
             required
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="endpoint" className="block text-sm font-medium text-gray-700">API Endpoint</label>
+        <div>
+          <label htmlFor="endpoint" className="block text-sm font-medium text-gray-700">
+            API Endpoint
+          </label>
           <input
             type="url"
             id="endpoint"
             name="endpoint"
             value={formData.endpoint}
-            onChange={handleChange}
+            onChange={handleInputChange}
             required
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">API Key</label>
+        <div>
+          <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">
+            API Key
+          </label>
           <input
             type="text"
             id="apiKey"
             name="apiKey"
             value={formData.apiKey}
-            onChange={handleChange}
+            onChange={handleInputChange}
             required
             className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
@@ -124,7 +136,7 @@ const BackendServicesAPIsForm: React.FC = () => {
             disabled={loading}
             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            {id ? 'Update' : 'Create'}
+            {loading ? 'Saving...' : 'Save'}
           </button>
         </div>
       </form>

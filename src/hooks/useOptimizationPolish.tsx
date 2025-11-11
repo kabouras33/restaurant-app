@@ -1,59 +1,58 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-interface FetchState<T> {
+interface FetchOptions {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  url: string;
+  data?: any;
+  headers?: Record<string, string>;
+}
+
+interface UseOptimizationPolishReturn<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
+  execute: (options: FetchOptions) => Promise<void>;
 }
 
-interface MutationState<T> {
-  loading: boolean;
-  error: string | null;
-  success: boolean;
-}
+function useOptimizationPolish<T>(): UseOptimizationPolishReturn<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-interface UseOptimizationPolishReturn<T, M> {
-  fetchData: () => Promise<void>;
-  mutateData: (data: M) => Promise<void>;
-  fetchState: FetchState<T>;
-  mutationState: MutationState<M>;
-}
+  const execute = useCallback(async (options: FetchOptions) => {
+    setLoading(true);
+    setError(null);
 
-function useOptimizationPolish<T, M>(fetchUrl: string, mutationUrl: string): UseOptimizationPolishReturn<T, M> {
-  const [fetchState, setFetchState] = useState<FetchState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-  });
-
-  const [mutationState, setMutationState] = useState<MutationState<M>>({
-    loading: false,
-    error: null,
-    success: false,
-  });
-
-  const fetchData = useCallback(async () => {
-    setFetchState({ data: null, loading: true, error: null });
     try {
-      const response = await axios.get<T>(fetchUrl);
-      setFetchState({ data: response.data, loading: false, error: null });
-    } catch (error) {
-      setFetchState({ data: null, loading: false, error: error.message || 'An error occurred' });
-    }
-  }, [fetchUrl]);
+      const response = await axios({
+        method: options.method,
+        url: options.url,
+        data: options.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user?.token}`,
+          ...options.headers,
+        },
+      });
 
-  const mutateData = useCallback(async (data: M) => {
-    setMutationState({ loading: true, error: null, success: false });
-    try {
-      await axios.post(mutationUrl, data);
-      setMutationState({ loading: false, error: null, success: true });
-    } catch (error) {
-      setMutationState({ loading: false, error: error.message || 'An error occurred', success: false });
+      setData(response.data);
+    } catch (err: any) {
+      if (err.response && err.response.status === 401) {
+        navigate('/login');
+      } else {
+        setError(err.message || 'An unexpected error occurred');
+      }
+    } finally {
+      setLoading(false);
     }
-  }, [mutationUrl]);
+  }, [user, navigate]);
 
-  return { fetchData, mutateData, fetchState, mutationState };
+  return { data, loading, error, execute };
 }
 
 export default useOptimizationPolish;

@@ -4,30 +4,50 @@ dist/
 .vite/
 *.log
 *.cache
-*.tmp
-*.swp
 
 # TypeScript
 *.tsbuildinfo
 
+# Tailwind CSS
+tailwind.config.js
+tailwind.config.ts
+
+# Vite
+.vite/
+
 # React
 build/
-coverage/
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
 
 # Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-ENV/
-*.env
-*.env.*
+*.pdb
+*.egg-info/
+*.eggs/
+*.pytest_cache/
+*.coverage
+.coverage.*
+.cache/
+htmlcov/
+dist/
+build/
+*.egg
+*.egg-info/
+.eggs/
+*.manifest
+*.spec
 
 # FastAPI
 instance/
+*.db
+
+# SQLAlchemy
 *.sqlite3
 
 # PostgreSQL
@@ -35,44 +55,54 @@ instance/
 *.pgdump
 
 # Docker
-*.dockerignore
+*.env
 Dockerfile
 docker-compose.yml
-docker-compose.override.yml
+.dockerignore
 
 # AWS
 *.pem
 *.key
 
-# GitHub Actions
-.github/workflows/*.yml
-
-# Miscellaneous
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-*.iml
+# Cloudflare
+.cloudflare/
 
 # Logs
 logs/
 *.log
 
+# Miscellaneous
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*.bak
+*.tmp
+
 # Testing
 coverage/
-*.coverage
-*.pytest_cache/
-.cache/
-.jest/
+.nyc_output/
+test-results.xml
 
-# Tailwind CSS
-tailwind.config.js
-tailwind.config.ts
+# Local environment
+.env
+.env.*
+.envrc
 
-# ESLint
-.eslintcache
+# Yarn
+.yarn/
+.pnp.*
+yarn-error.log
 
-# Ignore lock files
+# npm
 package-lock.json
-yarn.lock
-pnpm-lock.yaml
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace

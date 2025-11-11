@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Deployment {
   id: number;
@@ -16,19 +17,27 @@ const TestingSecurityDeploymentList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
     const fetchDeployments = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
         const response = await axios.get('/api/deployments', {
           params: { page: currentPage, search: searchTerm },
         });
         setDeployments(response.data.deployments);
         setTotalPages(response.data.totalPages);
+        setError(null);
       } catch (err) {
-        setError('Failed to load deployments');
+        setError('Failed to fetch deployments.');
       } finally {
         setLoading(false);
       }
@@ -45,31 +54,21 @@ const TestingSecurityDeploymentList: React.FC = () => {
     setCurrentPage(page);
   };
 
-  const handleRetry = () => {
-    setError(null);
-    setLoading(true);
-    setCurrentPage(1);
-  };
-
   return (
-    <div className="p-4">
+    <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Testing, Security & Deployment</h1>
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search deployments..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className="border p-2 rounded w-full"
-          aria-label="Search deployments"
-        />
-      </div>
+      <input
+        type="text"
+        placeholder="Search deployments..."
+        value={searchTerm}
+        onChange={handleSearchChange}
+        className="border p-2 rounded mb-4 w-full"
+        aria-label="Search deployments"
+      />
       {loading ? (
         <div className="text-center">Loading...</div>
       ) : error ? (
-        <div className="text-center text-red-500">
-          {error} <button onClick={handleRetry} className="text-blue-500">Retry</button>
-        </div>
+        <div className="text-red-500">{error}</div>
       ) : (
         <table className="min-w-full bg-white">
           <thead>
@@ -81,10 +80,10 @@ const TestingSecurityDeploymentList: React.FC = () => {
           </thead>
           <tbody>
             {deployments.map((deployment) => (
-              <tr key={deployment.id} className="text-center">
-                <td className="py-2">{deployment.name}</td>
-                <td className="py-2">{deployment.status}</td>
-                <td className="py-2">{new Date(deployment.createdAt).toLocaleDateString()}</td>
+              <tr key={deployment.id}>
+                <td className="border px-4 py-2">{deployment.name}</td>
+                <td className="border px-4 py-2">{deployment.status}</td>
+                <td className="border px-4 py-2">{new Date(deployment.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>
@@ -92,9 +91,9 @@ const TestingSecurityDeploymentList: React.FC = () => {
       )}
       <div className="flex justify-between mt-4">
         <button
-          disabled={currentPage === 1}
           onClick={() => handlePageChange(currentPage - 1)}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          disabled={currentPage === 1}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
           Previous
         </button>
@@ -102,9 +101,9 @@ const TestingSecurityDeploymentList: React.FC = () => {
           Page {currentPage} of {totalPages}
         </span>
         <button
-          disabled={currentPage === totalPages}
           onClick={() => handlePageChange(currentPage + 1)}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          disabled={currentPage === totalPages}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
           Next
         </button>

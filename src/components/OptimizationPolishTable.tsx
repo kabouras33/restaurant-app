@@ -1,45 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+interface TableColumn {
+  key: string;
+  label: string;
+}
 
 interface TableProps {
-  apiUrl: string;
+  columns: TableColumn[];
+  apiEndpoint: string;
 }
 
-interface TableData {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-}
-
-const OptimizationPolishTable: React.FC<TableProps> = ({ apiUrl }) => {
-  const [data, setData] = useState<TableData[]>([]);
+const OptimizationPolishTable: React.FC<TableProps> = ({ columns, apiEndpoint }) => {
+  const { user } = useAuth();
+  const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof TableData; direction: 'ascending' | 'descending' } | null>(null);
-  const navigate = useNavigate();
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await axios.get<TableData[]>(apiUrl);
+        const response = await axios.get(apiEndpoint, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
         setData(response.data);
-        setError(null);
       } catch (err) {
-        setError('Failed to fetch data. Please try again later.');
+        setError('Failed to load data');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [apiUrl]);
 
-  const handleSort = (key: keyof TableData) => {
-    let direction: 'ascending' | 'descending' = 'ascending';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
+    fetchData();
+  }, [apiEndpoint, user.token]);
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
     }
     setSortConfig({ key, direction });
   };
@@ -47,56 +48,47 @@ const OptimizationPolishTable: React.FC<TableProps> = ({ apiUrl }) => {
   const sortedData = React.useMemo(() => {
     if (!sortConfig) return data;
     return [...data].sort((a, b) => {
-      if (a[sortConfig.key] < b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? -1 : 1;
-      }
-      if (a[sortConfig.key] > b[sortConfig.key]) {
-        return sortConfig.direction === 'ascending' ? 1 : -1;
-      }
+      if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
   }, [data, sortConfig]);
 
-  const handleRowClick = (id: number) => {
-    navigate(`/details/${id}`);
-  };
+  if (loading) return <div className="text-center py-4">Loading...</div>;
+  if (error) return <div className="text-center py-4 text-red-500">{error}</div>;
 
   return (
-    <div className="container mx-auto p-4">
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-        </div>
-      ) : error ? (
-        <div className="text-red-500 text-center">{error}</div>
-      ) : (
-        <table className="min-w-full bg-white border border-gray-200">
-          <thead>
-            <tr>
-              <th className="py-2 px-4 border-b" onClick={() => handleSort('name')}>
-                Name
+    <div className="overflow-x-auto">
+      <table className="min-w-full bg-white border border-gray-200">
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th
+                key={column.key}
+                onClick={() => handleSort(column.key)}
+                className="py-2 px-4 bg-gray-100 border-b border-gray-200 cursor-pointer"
+                aria-sort={sortConfig?.key === column.key ? sortConfig.direction : 'none'}
+              >
+                {column.label}
+                {sortConfig?.key === column.key && (
+                  <span>{sortConfig.direction === 'asc' ? ' 🔼' : ' 🔽'}</span>
+                )}
               </th>
-              <th className="py-2 px-4 border-b" onClick={() => handleSort('category')}>
-                Category
-              </th>
-              <th className="py-2 px-4 border-b" onClick={() => handleSort('price')}>
-                Price
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedData.map((item) => (
-              <tr key={item.id} className="cursor-pointer hover:bg-gray-100" onClick={() => handleRowClick(item.id)}>
-                <td className="py-2 px-4 border-b">{item.name}</td>
-                <td className="py-2 px-4 border-b">{item.category}</td>
-                <td className="py-2 px-4 border-b">${item.price.toFixed(2)}</td>
-              </tr>
             ))}
-          </tbody>
-        </table>
-      )}
+          </tr>
+        </thead>
+        <tbody>
+          {sortedData.map((row, index) => (
+            <tr key={index} className="hover:bg-gray-50">
+              {columns.map((column) => (
+                <td key={column.key} className="py-2 px-4 border-b border-gray-200">
+                  {row[column.key]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };

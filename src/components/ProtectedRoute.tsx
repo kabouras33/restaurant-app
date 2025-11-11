@@ -1,45 +1,47 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
-import { AuthContext } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
+  requiredRole?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, loading, setLoading, setAuthError } = useContext(AuthContext);
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
+  const { user, logout } = useAuth();
   const location = useLocation();
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      setLoading(true);
+    const verifyUser = async () => {
       try {
-        const response = await axios.get('/api/auth/check', { withCredentials: true });
-        if (response.data.isAuthenticated) {
-          setIsAuthorized(true);
-        } else {
-          setIsAuthorized(false);
+        setLoading(true);
+        const response = await axios.get('/api/auth/verify', {
+          headers: { Authorization: `Bearer ${user?.token}` },
+        });
+        if (requiredRole && response.data.role !== requiredRole) {
+          throw new Error('Unauthorized');
         }
-      } catch (error) {
-        setAuthError('Failed to verify authentication. Please try again.');
-        setIsAuthorized(false);
+      } catch (err) {
+        setError('You are not authorized to view this page.');
+        logout();
       } finally {
         setLoading(false);
       }
     };
 
-    if (!isAuthenticated) {
-      checkAuth();
+    if (user) {
+      verifyUser();
     } else {
-      setIsAuthorized(true);
+      setLoading(false);
     }
-  }, [isAuthenticated, setLoading, setAuthError]);
+  }, [user, requiredRole, logout]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex justify-center items-center h-screen">
         <div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
@@ -47,7 +49,23 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (isAuthorized === false) {
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <p className="text-red-500">{error}</p>
+          <button
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={() => logout()}
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

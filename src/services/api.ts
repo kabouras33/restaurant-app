@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ApiResponse<T> {
   data: T;
@@ -6,8 +7,15 @@ interface ApiResponse<T> {
   success: boolean;
 }
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+}
+
 interface LoginResponse {
   token: string;
+  user: User;
 }
 
 interface ErrorResponse {
@@ -24,34 +32,33 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
   (config: AxiosRequestConfig) => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const { user } = useAuth();
+    if (user && user.token) {
+      config.headers.Authorization = `Bearer ${user.token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {
     if (error.response) {
-      const errorResponse: ErrorResponse = {
-        message: error.response.data.message || 'An error occurred',
-      };
-      return Promise.reject(errorResponse);
+      const { status, data } = error.response;
+      if (status === 401) {
+        // Handle unauthorized access
+        useAuth().logout();
+      }
+      return Promise.reject(data as ErrorResponse);
     }
-    return Promise.reject({ message: 'Network error' });
+    return Promise.reject({ message: 'Network Error' });
   }
 );
 
 export const login = async (email: string, password: string): Promise<ApiResponse<LoginResponse>> => {
   try {
     const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login', { email, password });
-    localStorage.setItem('authToken', response.data.data.token);
     return response.data;
   } catch (error) {
     throw error;
@@ -85,18 +92,18 @@ export const fetchInventory = async (): Promise<ApiResponse<any>> => {
   }
 };
 
-export const updateInventory = async (inventoryId: string, inventoryData: any): Promise<ApiResponse<any>> => {
+export const updateInventory = async (inventoryData: any): Promise<ApiResponse<any>> => {
   try {
-    const response = await apiClient.put<ApiResponse<any>>(`/inventory/${inventoryId}`, inventoryData);
+    const response = await apiClient.put<ApiResponse<any>>('/inventory', inventoryData);
     return response.data;
   } catch (error) {
     throw error;
   }
 };
 
-export const fetchNotifications = async (): Promise<ApiResponse<any>> => {
+export const processPayment = async (paymentData: any): Promise<ApiResponse<any>> => {
   try {
-    const response = await apiClient.get<ApiResponse<any>>('/notifications');
+    const response = await apiClient.post<ApiResponse<any>>('/payments', paymentData);
     return response.data;
   } catch (error) {
     throw error;
