@@ -3,43 +3,40 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-interface PaymentFormProps {
-  onSuccess: (message: string) => void;
-  onError: (error: string) => void;
+interface PaymentProcessingProps {
+  onSuccess: () => void;
+  onError: (message: string) => void;
 }
 
-const IntegratePaymentProcessing: React.FC<PaymentFormProps> = ({ onSuccess, onError }) => {
+const IntegratePaymentProcessing: React.FC<PaymentProcessingProps> = ({ onSuccess, onError }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvc, setCvc] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) {
-      onError('User not authenticated');
-      return;
-    }
-
+  const handlePayment = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setLoading(true);
+    setError(null);
+
     try {
-      const response = await axios.post('/api/payments/charge', {
-        cardNumber,
-        expiryDate,
-        cvc,
+      const response = await axios.post('/api/payments/process', {
         userId: user.id,
+        // Additional payment data here
       });
 
       if (response.status === 200) {
-        onSuccess('Payment processed successfully');
+        onSuccess();
         navigate('/dashboard');
       } else {
-        onError('Failed to process payment');
+        throw new Error('Payment processing failed');
       }
-    } catch (error) {
-      onError('An error occurred during payment processing');
+    } catch (err) {
+      const errorMessage = axios.isAxiosError(err) && err.response?.data?.message
+        ? err.response.data.message
+        : 'An unexpected error occurred';
+      setError(errorMessage);
+      onError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -48,8 +45,8 @@ const IntegratePaymentProcessing: React.FC<PaymentFormProps> = ({ onSuccess, onE
   return (
     <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-4">Payment Processing</h2>
-      <form onSubmit={handlePayment} className="space-y-4">
-        <div>
+      <form onSubmit={handlePayment} noValidate>
+        <div className="mb-4">
           <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700">
             Card Number
           </label>
@@ -57,29 +54,23 @@ const IntegratePaymentProcessing: React.FC<PaymentFormProps> = ({ onSuccess, onE
             type="text"
             id="cardNumber"
             name="cardNumber"
-            value={cardNumber}
-            onChange={(e) => setCardNumber(e.target.value)}
             required
-            pattern="\d{16}"
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div>
+        <div className="mb-4">
           <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700">
-            Expiry Date (MM/YY)
+            Expiry Date
           </label>
           <input
             type="text"
             id="expiryDate"
             name="expiryDate"
-            value={expiryDate}
-            onChange={(e) => setExpiryDate(e.target.value)}
             required
-            pattern="\d{2}/\d{2}"
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div>
+        <div className="mb-4">
           <label htmlFor="cvc" className="block text-sm font-medium text-gray-700">
             CVC
           </label>
@@ -87,24 +78,18 @@ const IntegratePaymentProcessing: React.FC<PaymentFormProps> = ({ onSuccess, onE
             type="text"
             id="cvc"
             name="cvc"
-            value={cvc}
-            onChange={(e) => setCvc(e.target.value)}
             required
-            pattern="\d{3}"
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div>
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-              loading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
-            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-          >
-            {loading ? 'Processing...' : 'Pay Now'}
-          </button>
-        </div>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        <button
+          type="submit"
+          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={loading}
+        >
+          {loading ? 'Processing...' : 'Pay Now'}
+        </button>
       </form>
     </div>
   );

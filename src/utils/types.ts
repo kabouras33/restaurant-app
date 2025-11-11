@@ -1,53 +1,71 @@
-import { ReactNode } from 'react';
+import React from 'react';
 
 export interface User {
   id: string;
   name: string;
   email: string;
   role: 'admin' | 'staff' | 'customer';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-}
-
-export interface RouteProps {
-  children: ReactNode;
-  path: string;
-  exact?: boolean;
+  register: (name: string, email: string, password: string) => Promise<void>;
 }
 
 export interface InventoryItem {
   id: string;
   name: string;
   description: string;
-  price: number;
   quantity: number;
+  price: number;
   imageUrl: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Reservation {
   id: string;
-  customerName: string;
+  userId: string;
+  tableNumber: number;
   date: string;
   time: string;
   numberOfGuests: number;
-  specialRequests?: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface PaymentDetails {
+export interface Payment {
+  id: string;
+  userId: string;
   amount: number;
   currency: string;
-  paymentMethodId: string;
+  status: 'pending' | 'completed' | 'failed';
+  method: 'credit_card' | 'paypal' | 'stripe';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Report {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Notification {
   id: string;
+  userId: string;
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: 'info' | 'warning' | 'error';
   read: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ApiResponse<T> {
@@ -55,38 +73,22 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export interface LoadingState {
-  loading: boolean;
-  error?: string;
-}
-
-export interface FormValidation {
-  isValid: boolean;
-  errors: Record<string, string>;
-}
-
-export interface TableProps<T> {
+export interface PaginatedResponse<T> {
   data: T[];
-  columns: Column<T>[];
-  loading: boolean;
-  error?: string;
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
-export interface Column<T> {
-  header: string;
-  accessor: keyof T;
-  render?: (item: T) => ReactNode;
+export interface ErrorResponse {
+  error: string;
 }
 
-export interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: ReactNode;
+export interface LoadingState {
+  isLoading: boolean;
+  error: string | null;
 }
 
-export interface NotificationContextType {
-  notifications: Notification[];
-  addNotification: (message: string, type: 'success' | 'error' | 'info') => void;
-  removeNotification: (id: string) => void;
+export interface FormValidationErrors {
+  [key: string]: string;
 }

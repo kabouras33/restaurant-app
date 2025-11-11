@@ -1,50 +1,54 @@
 import { useState, useCallback } from 'react';
 import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 
-interface FetchOptions {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  url: string;
-  data?: any;
-}
-
-interface FetchResponse<T> {
+interface FetchState<T> {
   data: T | null;
-  error: string | null;
   loading: boolean;
-  execute: (options: FetchOptions) => Promise<void>;
+  error: string | null;
 }
 
-function useTestingSecurityDeployment<T>(): FetchResponse<T> {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const { user } = useAuth();
+interface UseTestingSecurityDeploymentProps<T> {
+  endpoint: string;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  body?: Record<string, any>;
+  headers?: Record<string, string>;
+  onSuccess?: (data: T) => void;
+  onError?: (error: string) => void;
+}
 
-  const execute = useCallback(async (options: FetchOptions) => {
-    setLoading(true);
-    setError(null);
+function useTestingSecurityDeployment<T>({
+  endpoint,
+  method,
+  body,
+  headers,
+  onSuccess,
+  onError,
+}: UseTestingSecurityDeploymentProps<T>): FetchState<T> {
+  const [state, setState] = useState<FetchState<T>>({
+    data: null,
+    loading: false,
+    error: null,
+  });
 
+  const fetchData = useCallback(async () => {
+    setState({ data: null, loading: true, error: null });
     try {
       const response = await axios({
-        method: options.method,
-        url: options.url,
-        data: options.data,
-        headers: {
-          Authorization: `Bearer ${user?.token}`,
-          'Content-Type': 'application/json',
-        },
+        url: endpoint,
+        method,
+        data: body,
+        headers,
       });
-
-      setData(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
+      setState({ data: response.data, loading: false, error: null });
+      if (onSuccess) onSuccess(response.data);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
+      setState({ data: null, loading: false, error: errorMessage });
+      if (onError) onError(errorMessage);
     }
-  }, [user]);
+  }, [endpoint, method, body, headers, onSuccess, onError]);
 
-  return { data, error, loading, execute };
+  return { ...state, fetchData };
 }
 
 export default useTestingSecurityDeployment;

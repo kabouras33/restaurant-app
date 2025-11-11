@@ -1,57 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SecurityAuditProps {
-  onComplete: () => void;
+  onAuditComplete: () => void;
 }
 
-const PerformSecurityAudits: React.FC<SecurityAuditProps> = ({ onComplete }) => {
+const PerformSecurityAudits: React.FC<SecurityAuditProps> = ({ onAuditComplete }) => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        setSuccess(false);
-        onComplete();
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, onComplete]);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const handleAudit = async () => {
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const response = await axios.post('/api/security-audits', { userId: user.id });
       if (response.status === 200) {
-        setSuccess(true);
+        setSuccess('Security audit completed successfully.');
+        onAuditComplete();
       } else {
-        throw new Error('Failed to perform security audit');
+        setError('Failed to complete the security audit.');
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
+    } catch (err) {
+      setError('An error occurred while performing the security audit.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md max-w-md mx-auto">
-      <h2 className="text-xl font-bold mb-4">Perform Security Audit</h2>
-      {error && <div className="text-red-500 mb-4" role="alert">{error}</div>}
-      {success && <div className="text-green-500 mb-4" role="alert">Security audit completed successfully!</div>}
+    <div className="max-w-md mx-auto bg-white shadow-md rounded-lg p-6 mt-8">
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">Perform Security Audit</h2>
       <button
         onClick={handleAudit}
         disabled={loading}
-        className={`w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        aria-busy={loading}
+        className={`w-full bg-blue-500 text-white py-2 px-4 rounded ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600'}`}
+        aria-label="Perform Security Audit"
       >
-        {loading ? 'Performing Audit...' : 'Start Security Audit'}
+        {loading ? 'Performing Audit...' : 'Start Audit'}
       </button>
+      {error && <p className="text-red-500 mt-4">{error}</p>}
+      {success && <p className="text-green-500 mt-4">{success}</p>}
     </div>
   );
 };

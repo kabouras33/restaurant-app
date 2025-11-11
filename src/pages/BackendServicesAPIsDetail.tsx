@@ -10,6 +10,7 @@ interface ApiDetail {
   endpoint: string;
   method: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 const BackendServicesAPIsDetail: React.FC = () => {
@@ -28,12 +29,11 @@ const BackendServicesAPIsDetail: React.FC = () => {
 
     const fetchApiDetail = async () => {
       try {
-        const response = await axios.get(`/api/backend-services/${id}`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
+        setLoading(true);
+        const response = await axios.get(`/api/backend-services/${id}`);
         setApiDetail(response.data);
       } catch (err) {
-        setError('Failed to load API details.');
+        setError('Failed to load API details. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -43,15 +43,13 @@ const BackendServicesAPIsDetail: React.FC = () => {
   }, [id, user, navigate]);
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this API?')) return;
+    if (!apiDetail) return;
 
     try {
-      await axios.delete(`/api/backend-services/${id}`, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      navigate('/dashboard');
+      await axios.delete(`/api/backend-services/${apiDetail.id}`);
+      navigate('/backend-services');
     } catch (err) {
-      setError('Failed to delete API.');
+      setError('Failed to delete API. Please try again later.');
     }
   };
 
@@ -71,18 +69,27 @@ const BackendServicesAPIsDetail: React.FC = () => {
           <h2 className="text-xl font-semibold">{apiDetail.name}</h2>
           <p className="text-gray-700 mt-2">{apiDetail.description}</p>
           <div className="mt-4">
-            <span className="font-semibold">Endpoint:</span> {apiDetail.endpoint}
+            <span className="font-medium">Endpoint:</span> {apiDetail.endpoint}
           </div>
           <div className="mt-2">
-            <span className="font-semibold">Method:</span> {apiDetail.method}
+            <span className="font-medium">Method:</span> {apiDetail.method}
           </div>
           <div className="mt-2">
-            <span className="font-semibold">Created At:</span> {new Date(apiDetail.createdAt).toLocaleDateString()}
+            <span className="font-medium">Created At:</span> {new Date(apiDetail.createdAt).toLocaleString()}
+          </div>
+          <div className="mt-2">
+            <span className="font-medium">Updated At:</span> {new Date(apiDetail.updatedAt).toLocaleString()}
           </div>
           <div className="flex justify-end mt-6">
             <button
+              onClick={() => navigate(`/backend-services/edit/${apiDetail.id}`)}
+              className="bg-blue-500 text-white px-4 py-2 rounded-md mr-2"
+            >
+              Edit
+            </button>
+            <button
               onClick={handleDelete}
-              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
+              className="bg-red-500 text-white px-4 py-2 rounded-md"
             >
               Delete
             </button>

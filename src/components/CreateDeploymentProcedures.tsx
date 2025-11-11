@@ -3,23 +3,23 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-interface DeploymentProcedure {
-  name: string;
-  description: string;
-  steps: string;
+interface DeploymentProcedureForm {
+  environment: string;
+  version: string;
+  notes: string;
 }
 
 const CreateDeploymentProcedures: React.FC = () => {
-  const [formData, setFormData] = useState<DeploymentProcedure>({
-    name: '',
-    description: '',
-    steps: '',
+  const [formData, setFormData] = useState<DeploymentProcedureForm>({
+    environment: '',
+    version: '',
+    notes: '',
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -33,7 +33,7 @@ const CreateDeploymentProcedures: React.FC = () => {
     setSuccess(null);
 
     try {
-      const response = await axios.post('/api/deployment-procedures', formData, {
+      const response = await axios.post('/api/deployments', formData, {
         headers: {
           Authorization: `Bearer ${user.token}`,
         },
@@ -48,60 +48,58 @@ const CreateDeploymentProcedures: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white shadow-md rounded-lg">
+    <div className="max-w-lg mx-auto p-6 bg-white shadow-md rounded-lg">
       <h2 className="text-2xl font-bold mb-4">Create Deployment Procedure</h2>
       {error && <div className="text-red-500 mb-4">{error}</div>}
       {success && <div className="text-green-500 mb-4">{success}</div>}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-            Name
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="mb-4">
+          <label htmlFor="environment" className="block text-sm font-medium text-gray-700">
+            Environment
           </label>
           <input
             type="text"
-            id="name"
-            name="name"
-            value={formData.name}
+            id="environment"
+            name="environment"
+            value={formData.environment}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
+        <div className="mb-4">
+          <label htmlFor="version" className="block text-sm font-medium text-gray-700">
+            Version
+          </label>
+          <input
+            type="text"
+            id="version"
+            name="version"
+            value={formData.version}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+            Notes
           </label>
           <textarea
-            id="description"
-            name="description"
-            value={formData.description}
+            id="notes"
+            name="notes"
+            value={formData.notes}
             onChange={handleChange}
-            required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div>
-          <label htmlFor="steps" className="block text-sm font-medium text-gray-700">
-            Steps
-          </label>
-          <textarea
-            id="steps"
-            name="steps"
-            value={formData.steps}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-          />
-        </div>
-        <div>
+        <div className="flex justify-end">
           <button
             type="submit"
             disabled={loading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-              loading ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'
-            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            {loading ? 'Creating...' : 'Create Procedure'}
+            {loading ? 'Creating...' : 'Create'}
           </button>
         </div>
       </form>

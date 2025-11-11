@@ -21,7 +21,7 @@ const Login: React.FC = () => {
       login(response.data.token);
       navigate('/dashboard');
     } catch (err) {
-      setError('Failed to login. Please check your credentials.');
+      setError('Invalid email or password');
     } finally {
       setLoading(false);
     }
@@ -30,7 +30,7 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+        <h1 className="text-2xl font-bold mb-6 text-center">Login</h1>
         {error && <div className="mb-4 text-red-500">{error}</div>}
         <form onSubmit={handleSubmit} noValidate>
           <div className="mb-4">
@@ -69,11 +69,6 @@ const Login: React.FC = () => {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
-        <div className="mt-6 text-center">
-          <a href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-500">
-            Forgot your password?
-          </a>
-        </div>
       </div>
     </div>
   );

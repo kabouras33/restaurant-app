@@ -11,9 +11,9 @@ interface FormData {
 }
 
 const TestingSecurityDeploymentForm: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
@@ -31,7 +31,7 @@ const TestingSecurityDeploymentForm: React.FC = () => {
           setFormData(response.data);
           setLoading(false);
         })
-        .catch(error => {
+        .catch(err => {
           setError('Failed to load deployment data.');
           setLoading(false);
         });
@@ -45,17 +45,16 @@ const TestingSecurityDeploymentForm: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
+    setError(null);
 
-    const apiCall = id ? axios.put : axios.post;
-    const url = id ? `/api/deployments/${id}` : '/api/deployments';
+    const apiCall = id ? axios.put(`/api/deployments/${id}`, formData) : axios.post('/api/deployments', formData);
 
-    apiCall(url, formData)
+    apiCall
       .then(() => {
         navigate('/dashboard');
       })
-      .catch(() => {
+      .catch(err => {
         setError('Failed to save deployment data.');
         setLoading(false);
       });
@@ -75,7 +74,7 @@ const TestingSecurityDeploymentForm: React.FC = () => {
             value={formData.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
         <div className="mb-4">
@@ -86,7 +85,7 @@ const TestingSecurityDeploymentForm: React.FC = () => {
             value={formData.description}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
         <div className="mb-4">
@@ -98,7 +97,7 @@ const TestingSecurityDeploymentForm: React.FC = () => {
             value={formData.deploymentDate}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
         <div className="mb-4">
@@ -108,8 +107,7 @@ const TestingSecurityDeploymentForm: React.FC = () => {
             name="securityLevel"
             value={formData.securityLevel}
             onChange={handleChange}
-            required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
           >
             <option value="low">Low</option>
             <option value="medium">Medium</option>

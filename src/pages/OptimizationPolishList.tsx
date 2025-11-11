@@ -8,19 +8,18 @@ interface Item {
   name: string;
   category: string;
   price: number;
-  stock: number;
 }
 
 const OptimizationPolishList: React.FC = () => {
-  const [items, setItems] = useState<Item[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
 
   useEffect(() => {
     if (!user) {
@@ -28,114 +27,105 @@ const OptimizationPolishList: React.FC = () => {
     } else {
       fetchItems();
     }
-  }, [user, currentPage, searchTerm, categoryFilter]);
+  }, [user, currentPage, search, categoryFilter]);
 
   const fetchItems = async () => {
     setLoading(true);
-    setError('');
+    setError(null);
     try {
       const response = await axios.get('/api/items', {
         params: {
           page: currentPage,
-          search: searchTerm,
+          search,
           category: categoryFilter,
         },
       });
       setItems(response.data.items);
       setTotalPages(response.data.totalPages);
     } catch (err) {
-      setError('Failed to load items. Please try again later.');
+      setError('Failed to fetch items. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    setSearch(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setCategoryFilter(e.target.value);
+    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <header className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Inventory Management</h1>
-        <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded">
-          Logout
-        </button>
-      </header>
-      <div className="bg-white p-4 rounded shadow">
-        <div className="flex mb-4">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="border p-2 rounded mr-2 flex-1"
-          />
-          <select value={categoryFilter} onChange={handleCategoryChange} className="border p-2 rounded">
-            <option value="">All Categories</option>
-            <option value="food">Food</option>
-            <option value="beverages">Beverages</option>
-            <option value="supplies">Supplies</option>
-          </select>
-        </div>
-        {loading ? (
-          <div className="text-center">Loading...</div>
-        ) : error ? (
-          <div className="text-red-500">{error}</div>
-        ) : (
-          <table className="w-full table-auto">
-            <thead>
-              <tr>
-                <th className="border px-4 py-2">Name</th>
-                <th className="border px-4 py-2">Category</th>
-                <th className="border px-4 py-2">Price</th>
-                <th className="border px-4 py-2">Stock</th>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Item List</h1>
+      <div className="flex mb-4">
+        <input
+          type="text"
+          placeholder="Search..."
+          value={search}
+          onChange={handleSearchChange}
+          className="border p-2 rounded mr-2"
+        />
+        <select
+          value={categoryFilter}
+          onChange={handleCategoryChange}
+          className="border p-2 rounded"
+        >
+          <option value="">All Categories</option>
+          <option value="food">Food</option>
+          <option value="beverage">Beverage</option>
+        </select>
+      </div>
+      {loading ? (
+        <div className="text-center">Loading...</div>
+      ) : error ? (
+        <div className="text-red-500">{error}</div>
+      ) : (
+        <table className="min-w-full bg-white">
+          <thead>
+            <tr>
+              <th className="py-2">Name</th>
+              <th className="py-2">Category</th>
+              <th className="py-2">Price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.id}>
+                <td className="border px-4 py-2">{item.name}</td>
+                <td className="border px-4 py-2">{item.category}</td>
+                <td className="border px-4 py-2">${item.price.toFixed(2)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td className="border px-4 py-2">{item.name}</td>
-                  <td className="border px-4 py-2">{item.category}</td>
-                  <td className="border px-4 py-2">${item.price.toFixed(2)}</td>
-                  <td className="border px-4 py-2">{item.stock}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <div className="flex justify-between mt-4">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="flex justify-between mt-4">
+        <button
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          Next
+        </button>
       </div>
     </div>
   );

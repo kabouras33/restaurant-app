@@ -2,58 +2,45 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-interface Cache {
+interface CacheData {
   [key: string]: any;
 }
 
-interface OptimizeApplicationPerformanceProps {
-  endpoint: string;
-}
-
-const OptimizeApplicationPerformance: React.FC<OptimizeApplicationPerformanceProps> = ({ endpoint }) => {
+const OptimizeApplicationPerformance: React.FC = () => {
   const { user } = useAuth();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const cache: Cache = {};
+  const [cache, setCache] = useState<CacheData>({});
 
   useEffect(() => {
-    if (!user) {
-      setError('User not authenticated');
-      setLoading(false);
-      return;
-    }
-
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-
-      if (cache[endpoint]) {
-        setData(cache[endpoint]);
-        setLoading(false);
-        return;
-      }
-
       try {
-        const response = await axios.get(endpoint, {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
+        const cacheKey = 'restaurantData';
+        if (cache[cacheKey]) {
+          setData(cache[cacheKey]);
+          setLoading(false);
+          return;
+        }
+        const response = await axios.get('/api/restaurant/data', {
+          headers: { Authorization: `Bearer ${user.token}` },
         });
-        cache[endpoint] = response.data;
         setData(response.data);
+        setCache((prevCache) => ({ ...prevCache, [cacheKey]: response.data }));
       } catch (err) {
-        setError('Failed to fetch data');
+        setError('Failed to load data. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [endpoint, user]);
+  }, [user.token, cache]);
 
   if (loading) {
-    return <div className="flex justify-center items-center h-full"><div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status"></div></div>;
+    return <div className="flex justify-center items-center h-full">Loading...</div>;
   }
 
   if (error) {
@@ -61,9 +48,26 @@ const OptimizeApplicationPerformance: React.FC<OptimizeApplicationPerformancePro
   }
 
   return (
-    <div className="p-4 bg-white shadow rounded-lg">
-      <h2 className="text-xl font-semibold mb-4">Data</h2>
-      <pre className="bg-gray-100 p-4 rounded">{JSON.stringify(data, null, 2)}</pre>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Restaurant Data</h1>
+      <table className="min-w-full bg-white">
+        <thead>
+          <tr>
+            <th className="py-2 px-4 border-b">Name</th>
+            <th className="py-2 px-4 border-b">Location</th>
+            <th className="py-2 px-4 border-b">Cuisine</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item, index) => (
+            <tr key={index} className="hover:bg-gray-100">
+              <td className="py-2 px-4 border-b">{item.name}</td>
+              <td className="py-2 px-4 border-b">{item.location}</td>
+              <td className="py-2 px-4 border-b">{item.cuisine}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };

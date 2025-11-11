@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ApplicationData {
-  id: number;
+  id: string;
   name: string;
   status: string;
   createdAt: string;
@@ -13,16 +13,17 @@ interface UseFrontendApplicationsReturn {
   applications: ApplicationData[];
   loading: boolean;
   error: string | null;
-  fetchApplications: () => void;
+  refetch: () => void;
   createApplication: (name: string) => Promise<void>;
-  updateApplicationStatus: (id: number, status: string) => Promise<void>;
+  updateApplication: (id: string, status: string) => Promise<void>;
+  deleteApplication: (id: string) => Promise<void>;
 }
 
 const useFrontendApplications = (): UseFrontendApplicationsReturn => {
+  const { user } = useAuth();
   const [applications, setApplications] = useState<ApplicationData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
@@ -33,63 +34,60 @@ const useFrontendApplications = (): UseFrontendApplicationsReturn => {
       });
       setApplications(response.data);
     } catch (err) {
-      setError('Failed to fetch applications. Please try again later.');
+      setError('Failed to fetch applications.');
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  const createApplication = useCallback(
-    async (name: string) => {
-      if (!name) {
-        setError('Application name is required.');
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        await axios.post(
-          '/api/applications',
-          { name },
-          {
-            headers: { Authorization: `Bearer ${user?.token}` },
-          }
-        );
-        fetchApplications();
-      } catch (err) {
-        setError('Failed to create application. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [user, fetchApplications]
-  );
+  const createApplication = async (name: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await axios.post(
+        '/api/applications',
+        { name },
+        { headers: { Authorization: `Bearer ${user?.token}` } }
+      );
+      await fetchApplications();
+    } catch (err) {
+      setError('Failed to create application.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const updateApplicationStatus = useCallback(
-    async (id: number, status: string) => {
-      if (!id || !status) {
-        setError('Invalid application ID or status.');
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        await axios.patch(
-          `/api/applications/${id}`,
-          { status },
-          {
-            headers: { Authorization: `Bearer ${user?.token}` },
-          }
-        );
-        fetchApplications();
-      } catch (err) {
-        setError('Failed to update application status. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [user, fetchApplications]
-  );
+  const updateApplication = async (id: string, status: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await axios.put(
+        `/api/applications/${id}`,
+        { status },
+        { headers: { Authorization: `Bearer ${user?.token}` } }
+      );
+      await fetchApplications();
+    } catch (err) {
+      setError('Failed to update application.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteApplication = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await axios.delete(`/api/applications/${id}`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      });
+      await fetchApplications();
+    } catch (err) {
+      setError('Failed to delete application.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchApplications();
@@ -99,9 +97,10 @@ const useFrontendApplications = (): UseFrontendApplicationsReturn => {
     applications,
     loading,
     error,
-    fetchApplications,
+    refetch: fetchApplications,
     createApplication,
-    updateApplicationStatus,
+    updateApplication,
+    deleteApplication,
   };
 };
 

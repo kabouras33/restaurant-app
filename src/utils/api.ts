@@ -2,87 +2,50 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 interface ApiResponse<T> {
   data: T;
-  status: number;
-  statusText: string;
+  error: string | null;
 }
 
-interface ApiError {
-  message: string;
-  status: number;
+interface FetchOptions extends AxiosRequestConfig {
+  authRequired?: boolean;
 }
 
-const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL,
-  timeout: 10000,
-  headers: {
+const API_BASE_URL = 'https://api.yourrestaurantapp.com';
+
+const fetchWrapper = async <T>(url: string, options: FetchOptions = {}): Promise<ApiResponse<T>> => {
+  const { authRequired, ...axiosOptions } = options;
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-  },
-});
+  };
 
-apiClient.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  if (authRequired) {
     const token = localStorage.getItem('authToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      return { data: null as any, error: 'Authentication required' };
     }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
   }
-);
 
-apiClient.interceptors.response.use(
-  (response: AxiosResponse): ApiResponse<any> => {
-    return {
-      data: response.data,
-      status: response.status,
-      statusText: response.statusText,
-    };
-  },
-  (error) => {
-    const apiError: ApiError = {
-      message: error.response?.data?.message || 'An unexpected error occurred',
-      status: error.response?.status || 500,
-    };
-    return Promise.reject(apiError);
-  }
-);
-
-export const fetchData = async <T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
   try {
-    const response = await apiClient.get<T>(url, config);
-    return response;
-  } catch (error) {
-    throw error;
+    const response: AxiosResponse<T> = await axios({
+      url: `${API_BASE_URL}${url}`,
+      headers,
+      ...axiosOptions,
+    });
+    return { data: response.data, error: null };
+  } catch (error: any) {
+    if (axios.isAxiosError(error)) {
+      return { data: null as any, error: error.response?.data?.message || 'An error occurred' };
+    }
+    return { data: null as any, error: 'An unexpected error occurred' };
   }
 };
 
-export const postData = async <T>(url: string, data: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
-  try {
-    const response = await apiClient.post<T>(url, data, config);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const putData = async <T>(url: string, data: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
-  try {
-    const response = await apiClient.put<T>(url, data, config);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const deleteData = async <T>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> => {
-  try {
-    const response = await apiClient.delete<T>(url, config);
-    return response;
-  } catch (error) {
-    throw error;
-  }
+export const apiClient = {
+  get: <T>(url: string, options?: FetchOptions) => fetchWrapper<T>(url, { ...options, method: 'GET' }),
+  post: <T>(url: string, data: any, options?: FetchOptions) => fetchWrapper<T>(url, { ...options, method: 'POST', data }),
+  put: <T>(url: string, data: any, options?: FetchOptions) => fetchWrapper<T>(url, { ...options, method: 'PUT', data }),
+  delete: <T>(url: string, options?: FetchOptions) => fetchWrapper<T>(url, { ...options, method: 'DELETE' }),
 };
 
 export default apiClient;

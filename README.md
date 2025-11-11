@@ -3,43 +3,43 @@
 
 ## Project Overview
 
-Restaurant App is a comprehensive restaurant management software designed as a web application. It provides restaurant owners with a powerful dashboard to manage their inventory and reservations efficiently. The application operates on a subscription model, allowing owners to access a suite of tools to streamline their operations. Built with a modern tech stack, Restaurant App ensures a seamless user experience and robust functionality.
+Welcome to the Restaurant App! This web application is designed to provide restaurant owners with a comprehensive management dashboard. By subscribing to our service, restaurant owners can efficiently manage their inventory, handle reservations, and access insightful analytics. The platform offers a seamless experience with real-time notifications and secure payment processing through Stripe.
 
 ## Features
 
-- **User Authentication and Authorization**: Secure login and role-based access control for restaurant staff.
-- **Inventory Management**: Track and manage stock levels, supplier information, and order history.
-- **Reservation Management**: Handle table bookings, customer preferences, and reservation schedules.
-- **Payment Processing with Stripe**: Integrated payment gateway for processing subscription fees.
-- **Reporting and Analytics**: Generate insights and reports on sales, inventory usage, and customer trends.
-- **Real-time Notifications**: Alerts for low inventory, new reservations, and other critical updates.
+- **User Authentication and Management**: Secure login and user management system.
+- **Inventory Management**: Track and manage restaurant inventory efficiently.
+- **Reservation System**: Handle customer reservations with ease.
+- **Payment Processing**: Integrated with Stripe for secure transactions.
+- **Reporting and Analytics**: Gain insights through detailed reports and analytics.
+- **Real-time Notifications**: Stay updated with real-time alerts and notifications.
 
 ## Tech Stack
 
-- **Frontend**: 
-  - React
-  - TypeScript
-  - Tailwind CSS
-  - Vite
+### Frontend
+- **React**
+- **TypeScript**
+- **Tailwind CSS**
+- **Vite**
 
-- **Backend**:
-  - Python
-  - FastAPI
-  - Pydantic
-  - SQLAlchemy
+### Backend
+- **Python**
+- **FastAPI**
+- **Pydantic**
+- **SQLAlchemy**
 
-- **Database**:
-  - PostgreSQL
+### Database
+- **PostgreSQL**
 
-- **Testing**:
-  - Pytest
-  - React Testing Library
+### Testing
+- **Pytest**
+- **React Testing Library**
 
-- **Deployment**:
-  - Docker
-  - Docker Compose
-  - AWS EC2
-  - Cloudflare
+### Deployment
+- **Docker**
+- **Docker Compose**
+- **AWS EC2**
+- **Cloudflare**
 
 ## Installation Instructions
 
@@ -50,90 +50,90 @@ Restaurant App is a comprehensive restaurant management software designed as a w
    ```
 
 2. **Set Up the Backend**:
-   - Ensure you have Python and PostgreSQL installed.
-   - Create a virtual environment and activate it:
+   - Ensure you have Python 3.8+ installed.
+   - Create a virtual environment:
      ```bash
      python -m venv venv
      source venv/bin/activate  # On Windows use `venv\Scripts\activate`
      ```
-   - Install the backend dependencies:
+   - Install dependencies:
      ```bash
      pip install -r backend/requirements.txt
      ```
-   - Set up the PostgreSQL database and configure the connection settings in `backend/config.py`.
 
 3. **Set Up the Frontend**:
-   - Navigate to the frontend directory and install dependencies:
+   - Navigate to the frontend directory:
      ```bash
      cd frontend
+     ```
+   - Install dependencies:
+     ```bash
      npm install
      ```
 
-4. **Run the Application**:
+4. **Configure Environment Variables**:
+   - Create a `.env` file in the backend directory and configure your database and Stripe credentials.
+
+5. **Run the Application**:
    - Start the backend server:
      ```bash
-     uvicorn backend.main:app --reload
+     uvicorn main:app --reload
      ```
-   - Start the frontend development server:
+   - Start the frontend server:
      ```bash
      npm run dev
      ```
 
 ## Usage Guide
 
-- Access the application by navigating to `http://localhost:3000` in your web browser.
-- Register as a new user or log in with existing credentials.
-- Use the dashboard to manage inventory, reservations, and view reports.
+- Access the application at `http://localhost:3000`.
+- Register or log in using your credentials.
+- Navigate through the dashboard to manage inventory, reservations, and view analytics.
+- Use the settings to configure notifications and payment options.
 
 ## API Documentation
 
-The API is documented using FastAPI's interactive documentation. Once the backend server is running, access the API docs at `http://localhost:8000/docs`.
+The backend API is documented using Swagger. Once the backend server is running, access the API documentation at `http://localhost:8000/docs`.
 
 ## Testing Instructions
 
-1. **Backend Tests**:
-   - Ensure the virtual environment is activated.
-   - Run Pytest:
-     ```bash
-     pytest backend/tests
-     ```
+- **Backend Testing**:
+  - Run tests using Pytest:
+    ```bash
+    pytest
+    ```
 
-2. **Frontend Tests**:
-   - Navigate to the frontend directory:
-     ```bash
-     cd frontend
-     ```
-   - Run the tests:
-     ```bash
-     npm test
-     ```
+- **Frontend Testing**:
+  - Run tests using React Testing Library:
+    ```bash
+    npm test
+    ```
 
 ## Deployment Guide
 
 1. **Docker Setup**:
-   - Ensure Docker and Docker Compose are installed.
-   - Build and run the containers:
+   - Build and run the Docker containers:
      ```bash
      docker-compose up --build
      ```
 
 2. **AWS EC2 Deployment**:
-   - Set up an EC2 instance and configure security groups.
-   - Deploy the Docker containers to the EC2 instance.
+   - Push the Docker images to a container registry.
+   - Pull and run the images on your AWS EC2 instance.
 
 3. **Cloudflare Configuration**:
-   - Set up DNS records and SSL certificates using Cloudflare for secure access.
+   - Configure your domain and DNS settings via Cloudflare for enhanced security and performance.
 
 ## Contributing Guidelines
 
-We welcome contributions! Please follow these steps:
+We welcome contributions from the community! Please follow these steps:
 
 1. Fork the repository.
 2. Create a new branch for your feature or bugfix.
-3. Commit your changes and push to your fork.
-4. Create a pull request with a detailed description of your changes.
+3. Commit your changes and push them to your fork.
+4. Submit a pull request with a detailed description of your changes.
 
-## License Information
+## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
 ```

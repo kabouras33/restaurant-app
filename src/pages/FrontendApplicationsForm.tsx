@@ -11,9 +11,9 @@ interface ApplicationFormData {
 }
 
 const FrontendApplicationsForm: React.FC = () => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState<ApplicationFormData>({
     name: '',
     email: '',
@@ -32,7 +32,7 @@ const FrontendApplicationsForm: React.FC = () => {
           setFormData(response.data);
           setLoading(false);
         })
-        .catch(err => {
+        .catch(error => {
           setError('Failed to load application data.');
           setLoading(false);
         });
@@ -56,74 +56,74 @@ const FrontendApplicationsForm: React.FC = () => {
       .then(() => {
         setSuccess('Application saved successfully.');
         setLoading(false);
-        setTimeout(() => navigate('/dashboard'), 2000);
+        setTimeout(() => navigate('/applications'), 2000);
       })
-      .catch(err => {
+      .catch(() => {
         setError('Failed to save application.');
         setLoading(false);
       });
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold mb-4">{id ? 'Edit Application' : 'New Application'}</h1>
+    <div className="max-w-2xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">{id ? 'Edit' : 'Create'} Application</h1>
       {loading && <div className="text-center">Loading...</div>}
-      {error && <div className="text-red-500 mb-4">{error}</div>}
-      {success && <div className="text-green-500 mb-4">{success}</div>}
-      <form onSubmit={handleSubmit} noValidate>
-        <div className="mb-4">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
+      {error && <div className="text-red-500">{error}</div>}
+      {success && <div className="text-green-500">{success}</div>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium">Name</label>
           <input
             type="text"
-            name="name"
             id="name"
+            name="name"
             value={formData.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50"
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium">Email</label>
           <input
             type="email"
-            name="email"
             id="email"
+            name="email"
             value={formData.email}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50"
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone</label>
+        <div>
+          <label htmlFor="phone" className="block text-sm font-medium">Phone</label>
           <input
             type="tel"
-            name="phone"
             id="phone"
+            name="phone"
             value={formData.phone}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50"
           />
         </div>
-        <div className="mb-4">
-          <label htmlFor="position" className="block text-sm font-medium text-gray-700">Position</label>
+        <div>
+          <label htmlFor="position" className="block text-sm font-medium">Position</label>
           <input
             type="text"
-            name="position"
             id="position"
+            name="position"
             value={formData.position}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50"
           />
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-300"
           >
             {id ? 'Update' : 'Create'}
           </button>

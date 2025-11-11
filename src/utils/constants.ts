@@ -2,84 +2,77 @@ import axios from 'axios';
 
 export const API_BASE_URL = 'https://api.yourrestaurantapp.com';
 export const STRIPE_PUBLIC_KEY = 'pk_test_1234567890abcdef';
-export const AUTH_TOKEN_KEY = 'authToken';
+export const AWS_S3_BUCKET_URL = 'https://yourbucket.s3.amazonaws.com';
 
-export const fetchConfig = async () => {
+export const ENDPOINTS = {
+  AUTH: {
+    LOGIN: `${API_BASE_URL}/auth/login`,
+    REGISTER: `${API_BASE_URL}/auth/register`,
+    LOGOUT: `${API_BASE_URL}/auth/logout`,
+    FORGOT_PASSWORD: `${API_BASE_URL}/auth/forgot-password`,
+  },
+  RESERVATIONS: {
+    BASE: `${API_BASE_URL}/reservations`,
+    CREATE: `${API_BASE_URL}/reservations/create`,
+    UPDATE: `${API_BASE_URL}/reservations/update`,
+    DELETE: `${API_BASE_URL}/reservations/delete`,
+  },
+  INVENTORY: {
+    BASE: `${API_BASE_URL}/inventory`,
+    ADD: `${API_BASE_URL}/inventory/add`,
+    UPDATE: `${API_BASE_URL}/inventory/update`,
+    DELETE: `${API_BASE_URL}/inventory/delete`,
+  },
+  PAYMENTS: {
+    CREATE_SESSION: `${API_BASE_URL}/payments/create-session`,
+  },
+  REPORTS: {
+    GENERATE: `${API_BASE_URL}/reports/generate`,
+  },
+  NOTIFICATIONS: {
+    EMAIL: `${API_BASE_URL}/notifications/email`,
+    SMS: `${API_BASE_URL}/notifications/sms`,
+  },
+};
+
+export const ERROR_MESSAGES = {
+  NETWORK_ERROR: 'Network error, please try again later.',
+  UNAUTHORIZED: 'You are not authorized to perform this action.',
+  FORBIDDEN: 'Access to this resource is forbidden.',
+  NOT_FOUND: 'The requested resource was not found.',
+  SERVER_ERROR: 'An unexpected error occurred. Please try again later.',
+};
+
+export const HEADERS = {
+  JSON: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+};
+
+export const fetchWithErrorHandling = async (url: string, options: any) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/config`);
+    const response = await axios(url, options);
     return response.data;
   } catch (error) {
-    console.error('Error fetching configuration:', error);
-    throw new Error('Failed to fetch configuration');
-  }
-};
-
-export const getAuthHeaders = () => {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
-export const handleApiError = (error: any) => {
-  if (axios.isAxiosError(error)) {
-    if (error.response) {
-      console.error('API Error:', error.response.data);
-      return error.response.data.message || 'An error occurred';
-    } else if (error.request) {
-      console.error('No response received:', error.request);
-      return 'No response from server';
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        switch (error.response.status) {
+          case 401:
+            throw new Error(ERROR_MESSAGES.UNAUTHORIZED);
+          case 403:
+            throw new Error(ERROR_MESSAGES.FORBIDDEN);
+          case 404:
+            throw new Error(ERROR_MESSAGES.NOT_FOUND);
+          case 500:
+            throw new Error(ERROR_MESSAGES.SERVER_ERROR);
+          default:
+            throw new Error(error.response.data.message || ERROR_MESSAGES.SERVER_ERROR);
+        }
+      } else if (error.request) {
+        throw new Error(ERROR_MESSAGES.NETWORK_ERROR);
+      }
     }
+    throw new Error(ERROR_MESSAGES.SERVER_ERROR);
   }
-  console.error('Unexpected error:', error);
-  return 'An unexpected error occurred';
 };
-
-export const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-export const validatePassword = (password: string): boolean => {
-  return password.length >= 8;
-};
-
-export const validateForm = (fields: Record<string, string>): Record<string, string> => {
-  const errors: Record<string, string> = {};
-  if (!validateEmail(fields.email)) {
-    errors.email = 'Invalid email address';
-  }
-  if (!validatePassword(fields.password)) {
-    errors.password = 'Password must be at least 8 characters';
-  }
-  return errors;
-};
-
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-};
-
-export const RESERVATION_STATUSES = {
-  PENDING: 'Pending',
-  CONFIRMED: 'Confirmed',
-  CANCELLED: 'Cancelled',
-};
-
-export const INVENTORY_CATEGORIES = [
-  'Appetizers',
-  'Main Courses',
-  'Desserts',
-  'Beverages',
-];
-
-export const NOTIFICATION_TYPES = {
-  EMAIL: 'Email',
-  SMS: 'SMS',
-  PUSH: 'Push Notification',
-};
-
-export const REPORT_TYPES = {
-  DAILY: 'Daily',
-  WEEKLY: 'Weekly',
-  MONTHLY: 'Monthly',
-};
-
-export const DEFAULT_PAGE_SIZE = 10;

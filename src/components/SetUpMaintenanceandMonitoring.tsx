@@ -14,13 +14,14 @@ const SetUpMaintenanceAndMonitoring: React.FC = () => {
   const [plans, setPlans] = useState<MaintenancePlan[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchPlans = async () => {
       try {
         const response = await axios.get('/api/maintenance-plans', {
-          headers: { Authorization: `Bearer ${user.token}` },
+          headers: {
+            Authorization: `Bearer ${user?.token}`
+          }
         });
         setPlans(response.data);
       } catch (err) {
@@ -31,29 +32,11 @@ const SetUpMaintenanceAndMonitoring: React.FC = () => {
     };
 
     fetchPlans();
-  }, [user.token]);
+  }, [user]);
 
-  const handlePlanSelect = (planId: number) => {
-    setSelectedPlan(planId);
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (selectedPlan === null) {
-      setError('Please select a maintenance plan.');
-      return;
-    }
-
-    try {
-      await axios.post(
-        '/api/user-maintenance',
-        { planId: selectedPlan },
-        { headers: { Authorization: `Bearer ${user.token}` } }
-      );
-      alert('Maintenance plan set successfully!');
-    } catch (err) {
-      setError('Failed to set maintenance plan.');
-    }
+  const handlePlanSelection = (planId: number) => {
+    // Implement plan selection logic
+    console.log(`Selected plan ID: ${planId}`);
   };
 
   if (loading) {
@@ -65,38 +48,24 @@ const SetUpMaintenanceAndMonitoring: React.FC = () => {
   }
 
   return (
-    <div className="max-w-lg mx-auto p-4 bg-white shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-4">Set Up Maintenance and Monitoring</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="maintenance-plan" className="block text-sm font-medium text-gray-700">
-            Select a Maintenance Plan
-          </label>
-          <select
-            id="maintenance-plan"
-            name="maintenance-plan"
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            value={selectedPlan ?? ''}
-            onChange={(e) => handlePlanSelect(Number(e.target.value))}
-            required
-          >
-            <option value="" disabled>
-              Choose a plan
-            </option>
-            {plans.map((plan) => (
-              <option key={plan.id} value={plan.id}>
-                {plan.name} - {plan.frequency}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          className="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Set Plan
-        </button>
-      </form>
+    <div className="max-w-4xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Set Up Maintenance and Monitoring</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {plans.map(plan => (
+          <div key={plan.id} className="border rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow">
+            <h2 className="text-xl font-semibold">{plan.name}</h2>
+            <p className="text-gray-600">{plan.description}</p>
+            <p className="text-sm text-gray-500">Frequency: {plan.frequency}</p>
+            <button
+              onClick={() => handlePlanSelection(plan.id)}
+              className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              aria-label={`Select ${plan.name} plan`}
+            >
+              Select Plan
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

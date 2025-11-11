@@ -20,7 +20,9 @@ const BackendServicesAPIsTable: React.FC = () => {
     const fetchServices = async () => {
       try {
         const response = await axios.get('/api/services', {
-          headers: { Authorization: `Bearer ${user.token}` }
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
         });
         setServices(response.data);
       } catch (err) {
@@ -29,26 +31,35 @@ const BackendServicesAPIsTable: React.FC = () => {
         setLoading(false);
       }
     };
+
     fetchServices();
   }, [user.token]);
 
-  const sortServices = (key: keyof ApiService) => {
+  const sortedServices = React.useMemo(() => {
+    if (sortConfig !== null) {
+      return [...services].sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return services;
+  }, [services, sortConfig]);
+
+  const requestSort = (key: keyof ApiService) => {
     let direction: 'ascending' | 'descending' = 'ascending';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     }
     setSortConfig({ key, direction });
-    setServices((prevServices) =>
-      [...prevServices].sort((a, b) => {
-        if (a[key] < b[key]) return direction === 'ascending' ? -1 : 1;
-        if (a[key] > b[key]) return direction === 'ascending' ? 1 : -1;
-        return 0;
-      })
-    );
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-64"><div className="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full" role="status"></div></div>;
+    return <div className="flex justify-center items-center h-64"><div className="loader"></div></div>;
   }
 
   if (error) {
@@ -57,20 +68,26 @@ const BackendServicesAPIsTable: React.FC = () => {
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full bg-white">
+      <table className="min-w-full bg-white border border-gray-200">
         <thead>
           <tr>
-            <th className="py-2 px-4 border-b" onClick={() => sortServices('name')}>Name</th>
-            <th className="py-2 px-4 border-b" onClick={() => sortServices('endpoint')}>Endpoint</th>
-            <th className="py-2 px-4 border-b" onClick={() => sortServices('status')}>Status</th>
+            <th className="px-6 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('name')}>
+              Name
+            </th>
+            <th className="px-6 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('endpoint')}>
+              Endpoint
+            </th>
+            <th className="px-6 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer" onClick={() => requestSort('status')}>
+              Status
+            </th>
           </tr>
         </thead>
         <tbody>
-          {services.map((service) => (
+          {sortedServices.map((service) => (
             <tr key={service.id} className="hover:bg-gray-100">
-              <td className="py-2 px-4 border-b">{service.name}</td>
-              <td className="py-2 px-4 border-b">{service.endpoint}</td>
-              <td className="py-2 px-4 border-b">{service.status}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{service.name}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.endpoint}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{service.status}</td>
             </tr>
           ))}
         </tbody>

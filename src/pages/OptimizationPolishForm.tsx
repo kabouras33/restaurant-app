@@ -22,7 +22,7 @@ const OptimizationPolishForm: React.FC = () => {
   });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [success, setSuccess] = useState<boolean>(false);
 
   useEffect(() => {
     if (id) {
@@ -41,24 +41,24 @@ const OptimizationPolishForm: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prevState => ({
+      ...prevState,
+      [name]: name === 'price' ? parseFloat(value) : value,
+    }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
-
     try {
       if (id) {
         await axios.put(`/api/items/${id}`, formData);
-        setSuccess('Item updated successfully.');
       } else {
         await axios.post('/api/items', formData);
-        setSuccess('Item created successfully.');
       }
-      navigate('/dashboard');
+      setSuccess(true);
+      setTimeout(() => navigate('/dashboard'), 2000);
     } catch (err) {
       setError('Failed to save item.');
     } finally {
@@ -69,8 +69,9 @@ const OptimizationPolishForm: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">{id ? 'Edit Item' : 'Create Item'}</h1>
-      {error && <div className="bg-red-100 text-red-700 p-2 mb-4">{error}</div>}
-      {success && <div className="bg-green-100 text-green-700 p-2 mb-4">{success}</div>}
+      {loading && <p>Loading...</p>}
+      {error && <p className="text-red-500">{error}</p>}
+      {success && <p className="text-green-500">Item saved successfully!</p>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
@@ -81,7 +82,7 @@ const OptimizationPolishForm: React.FC = () => {
             value={formData.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
         <div>
@@ -92,7 +93,7 @@ const OptimizationPolishForm: React.FC = () => {
             value={formData.description}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
         <div>
@@ -104,7 +105,9 @@ const OptimizationPolishForm: React.FC = () => {
             value={formData.price}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            min="0"
+            step="0.01"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
         <div>
@@ -116,18 +119,16 @@ const OptimizationPolishForm: React.FC = () => {
             value={formData.category}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           />
         </div>
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            {loading ? 'Saving...' : 'Save'}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          {loading ? 'Saving...' : 'Save'}
+        </button>
       </form>
     </div>
   );

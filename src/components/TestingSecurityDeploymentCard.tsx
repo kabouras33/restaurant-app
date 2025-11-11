@@ -20,7 +20,7 @@ const TestingSecurityDeploymentCard: React.FC<TestingSecurityDeploymentCardProps
         setLoading(true);
         const response = await axios.get(apiEndpoint, {
           headers: {
-            Authorization: `Bearer ${user?.token}`,
+            Authorization: `Bearer ${user.token}`,
           },
         });
         setData(response.data);
@@ -32,7 +32,7 @@ const TestingSecurityDeploymentCard: React.FC<TestingSecurityDeploymentCardProps
     };
 
     fetchData();
-  }, [apiEndpoint, user]);
+  }, [apiEndpoint, user.token]);
 
   if (loading) {
     return <div className="flex justify-center items-center h-64"><div className="loader">Loading...</div></div>;
@@ -43,18 +43,16 @@ const TestingSecurityDeploymentCard: React.FC<TestingSecurityDeploymentCardProps
   }
 
   return (
-    <div className="max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-      <div className="px-6 py-4">
-        <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-        <p className="text-gray-600">{description}</p>
-      </div>
-      <div className="px-6 py-4">
-        <ul className="list-disc list-inside">
-          {data.map((item, index) => (
-            <li key={index} className="text-gray-700">{item.name}</li>
-          ))}
-        </ul>
-      </div>
+    <div className="bg-white shadow-md rounded-lg p-6 mb-4">
+      <h2 className="text-xl font-bold mb-2">{title}</h2>
+      <p className="text-gray-700 mb-4">{description}</p>
+      <ul className="list-disc pl-5">
+        {data.map((item, index) => (
+          <li key={index} className="mb-2">
+            {item.name}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

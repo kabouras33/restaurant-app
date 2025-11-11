@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 
 interface User {
   id: string;
@@ -14,66 +13,59 @@ interface AuthState {
   error: string | null;
 }
 
-const useAuth = () => {
-  const [authState, setAuthState] = useState<AuthState>({
+interface UseAuthReturn {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+}
+
+const useAuth = (): UseAuthReturn => {
+  const [state, setState] = useState<AuthState>({
     user: null,
     loading: false,
     error: null,
   });
-  const navigate = useNavigate();
-
-  const login = useCallback(async (email: string, password: string) => {
-    setAuthState({ ...authState, loading: true, error: null });
-    try {
-      const response = await axios.post('/api/auth/login', { email, password });
-      setAuthState({ user: response.data.user, loading: false, error: null });
-      navigate('/dashboard');
-    } catch (error: any) {
-      setAuthState({
-        user: null,
-        loading: false,
-        error: error.response?.data?.message || 'Login failed',
-      });
-    }
-  }, [authState, navigate]);
-
-  const logout = useCallback(async () => {
-    setAuthState({ ...authState, loading: true, error: null });
-    try {
-      await axios.post('/api/auth/logout');
-      setAuthState({ user: null, loading: false, error: null });
-      navigate('/login');
-    } catch (error: any) {
-      setAuthState({
-        ...authState,
-        loading: false,
-        error: error.response?.data?.message || 'Logout failed',
-      });
-    }
-  }, [authState, navigate]);
-
-  const checkAuthStatus = useCallback(async () => {
-    setAuthState({ ...authState, loading: true, error: null });
-    try {
-      const response = await axios.get('/api/auth/status');
-      setAuthState({ user: response.data.user, loading: false, error: null });
-    } catch (error: any) {
-      setAuthState({
-        user: null,
-        loading: false,
-        error: error.response?.data?.message || 'Failed to verify authentication status',
-      });
-    }
-  }, [authState]);
 
   useEffect(() => {
-    checkAuthStatus();
-  }, [checkAuthStatus]);
+    const fetchUser = async () => {
+      setState(prev => ({ ...prev, loading: true }));
+      try {
+        const response = await axios.get('/api/auth/user');
+        setState({ user: response.data, loading: false, error: null });
+      } catch (error) {
+        setState({ user: null, loading: false, error: 'Failed to fetch user' });
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    setState(prev => ({ ...prev, loading: true }));
+    try {
+      const response = await axios.post('/api/auth/login', { email, password });
+      setState({ user: response.data, loading: false, error: null });
+    } catch (error) {
+      setState({ user: null, loading: false, error: 'Login failed' });
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    setState(prev => ({ ...prev, loading: true }));
+    try {
+      await axios.post('/api/auth/logout');
+      setState({ user: null, loading: false, error: null });
+    } catch (error) {
+      setState(prev => ({ ...prev, loading: false, error: 'Logout failed' }));
+    }
+  }, []);
 
   return {
-    user: authState.user,
-    loading: authState.loading,
-    error: authState.error,
+    user: state.user,
+    loading: state.loading,
+    error: state.error,
     login,
     logout,
   };

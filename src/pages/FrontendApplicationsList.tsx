@@ -7,7 +7,7 @@ interface Application {
   id: number;
   name: string;
   status: string;
-  createdAt: string;
+  created_at: string;
 }
 
 const FrontendApplicationsList: React.FC = () => {
@@ -23,30 +23,29 @@ const FrontendApplicationsList: React.FC = () => {
   useEffect(() => {
     if (!user) {
       navigate('/login');
-    } else {
-      fetchApplications();
+      return;
     }
+    fetchApplications();
   }, [user, currentPage, searchTerm]);
 
   const fetchApplications = async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await axios.get('/api/applications', {
         params: { page: currentPage, search: searchTerm },
       });
       setApplications(response.data.applications);
       setTotalPages(response.data.totalPages);
-      setError(null);
     } catch (err) {
-      setError('Failed to fetch applications. Please try again later.');
+      setError('Failed to load applications.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
@@ -59,28 +58,26 @@ const FrontendApplicationsList: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <header className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Frontend Applications</h1>
-        <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded">
-          Logout
-        </button>
+    <div className="min-h-screen bg-gray-100 p-4">
+      <header className="flex justify-between items-center bg-white p-4 shadow-md">
+        <h1 className="text-xl font-bold">Frontend Applications</h1>
+        <button onClick={handleLogout} className="text-red-500">Logout</button>
       </header>
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search applications..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className="border p-2 rounded w-full"
-        />
-      </div>
-      {loading ? (
-        <div className="text-center">Loading...</div>
-      ) : error ? (
-        <div className="text-red-500">{error}</div>
-      ) : (
-        <>
+      <main className="mt-4">
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search applications..."
+            value={searchTerm}
+            onChange={handleSearch}
+            className="p-2 border border-gray-300 rounded w-full"
+          />
+        </div>
+        {loading ? (
+          <div className="text-center">Loading...</div>
+        ) : error ? (
+          <div className="text-red-500">{error}</div>
+        ) : (
           <table className="min-w-full bg-white">
             <thead>
               <tr>
@@ -91,35 +88,30 @@ const FrontendApplicationsList: React.FC = () => {
             </thead>
             <tbody>
               {applications.map((app) => (
-                <tr key={app.id}>
-                  <td className="border px-4 py-2">{app.name}</td>
-                  <td className="border px-4 py-2">{app.status}</td>
-                  <td className="border px-4 py-2">{new Date(app.createdAt).toLocaleDateString()}</td>
+                <tr key={app.id} className="text-center">
+                  <td className="py-2">{app.name}</td>
+                  <td className="py-2">{app.status}</td>
+                  <td className="py-2">{new Date(app.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="flex justify-between mt-4">
+        )}
+        <div className="flex justify-center mt-4">
+          {Array.from({ length: totalPages }, (_, i) => (
             <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="bg-gray-300 text-gray-700 px-4 py-2 rounded disabled:opacity-50"
+              key={i}
+              onClick={() => handlePageChange(i + 1)}
+              className={`px-4 py-2 mx-1 ${currentPage === i + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
             >
-              Previous
+              {i + 1}
             </button>
-            <span>
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="bg-gray-300 text-gray-700 px-4 py-2 rounded disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </>
-      )}
+          ))}
+        </div>
+      </main>
+      <footer className="mt-4 text-center text-gray-500">
+        &copy; 2023 Restaurant App
+      </footer>
     </div>
   );
 };

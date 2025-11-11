@@ -17,27 +17,18 @@ const TestingSecurityDeploymentList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-    }
-  }, [user, navigate]);
-
-  useEffect(() => {
     const fetchDeployments = async () => {
-      setLoading(true);
       try {
-        const response = await axios.get('/api/deployments', {
-          params: { page: currentPage, search: searchTerm },
-        });
+        setLoading(true);
+        const response = await axios.get(`/api/deployments?page=${currentPage}&search=${searchTerm}`);
         setDeployments(response.data.deployments);
         setTotalPages(response.data.totalPages);
-        setError(null);
       } catch (err) {
-        setError('Failed to fetch deployments.');
+        setError('Failed to fetch deployments. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -50,64 +41,72 @@ const TestingSecurityDeploymentList: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Testing, Security & Deployment</h1>
-      <input
-        type="text"
-        placeholder="Search deployments..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        className="border p-2 rounded mb-4 w-full"
-        aria-label="Search deployments"
-      />
-      {loading ? (
-        <div className="text-center">Loading...</div>
-      ) : error ? (
-        <div className="text-red-500">{error}</div>
-      ) : (
-        <table className="min-w-full bg-white">
-          <thead>
-            <tr>
-              <th className="py-2">Name</th>
-              <th className="py-2">Status</th>
-              <th className="py-2">Created At</th>
-            </tr>
-          </thead>
-          <tbody>
-            {deployments.map((deployment) => (
-              <tr key={deployment.id}>
-                <td className="border px-4 py-2">{deployment.name}</td>
-                <td className="border px-4 py-2">{deployment.status}</td>
-                <td className="border px-4 py-2">{new Date(deployment.createdAt).toLocaleDateString()}</td>
+    <div className="min-h-screen bg-gray-100 p-4">
+      <header className="flex justify-between items-center bg-white p-4 shadow-md">
+        <h1 className="text-xl font-bold">Deployments</h1>
+        <button onClick={handleLogout} className="text-red-500">Logout</button>
+      </header>
+      <main className="mt-4">
+        <div className="mb-4">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            placeholder="Search deployments..."
+            className="p-2 border border-gray-300 rounded w-full"
+          />
+        </div>
+        {loading ? (
+          <div className="text-center">Loading...</div>
+        ) : error ? (
+          <div className="text-red-500 text-center">{error}</div>
+        ) : (
+          <table className="min-w-full bg-white">
+            <thead>
+              <tr>
+                <th className="py-2">Name</th>
+                <th className="py-2">Status</th>
+                <th className="py-2">Created At</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <div className="flex justify-between mt-4">
-        <button
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-        >
-          Previous
-        </button>
-        <span>
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
+            </thead>
+            <tbody>
+              {deployments.map((deployment) => (
+                <tr key={deployment.id} className="border-t">
+                  <td className="py-2">{deployment.name}</td>
+                  <td className="py-2">{deployment.status}</td>
+                  <td className="py-2">{new Date(deployment.createdAt).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className="flex justify-between mt-4">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+          >
+            Previous
+          </button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+          >
+            Next
+          </button>
+        </div>
+      </main>
+      <footer className="mt-8 text-center text-gray-500">
+        &copy; 2023 Restaurant App
+      </footer>
     </div>
   );
 };

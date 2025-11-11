@@ -21,7 +21,7 @@ interface RegisterData {
 }
 
 const api = axios.create({
-  baseURL: 'https://api.example.com',
+  baseURL: 'https://api.yourrestaurantapp.com',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,7 +29,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -41,8 +41,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
+    if (error.response.status === 401) {
+      localStorage.removeItem('authToken');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -52,32 +52,36 @@ api.interceptors.response.use(
 export const login = async (data: LoginData): Promise<AuthResponse> => {
   try {
     const response = await api.post<AuthResponse>('/auth/login', data);
-    localStorage.setItem('token', response.data.token);
+    localStorage.setItem('authToken', response.data.token);
     return response.data;
   } catch (error) {
-    throw new Error('Login failed. Please check your credentials.');
+    console.error('Login failed:', error);
+    throw new Error('Invalid email or password');
   }
 };
 
 export const register = async (data: RegisterData): Promise<AuthResponse> => {
   try {
     const response = await api.post<AuthResponse>('/auth/register', data);
-    localStorage.setItem('token', response.data.token);
+    localStorage.setItem('authToken', response.data.token);
     return response.data;
   } catch (error) {
-    throw new Error('Registration failed. Please try again.');
+    console.error('Registration failed:', error);
+    throw new Error('Registration error');
   }
 };
 
 export const logout = (): void => {
-  localStorage.removeItem('token');
+  localStorage.removeItem('authToken');
   window.location.href = '/login';
 };
 
-export const getToken = (): string | null => {
-  return localStorage.getItem('token');
-};
-
-export const isAuthenticated = (): boolean => {
-  return !!getToken();
+export const getCurrentUser = async (): Promise<AuthResponse['user'] | null> => {
+  try {
+    const response = await api.get<AuthResponse['user']>('/auth/me');
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch current user:', error);
+    return null;
+  }
 };

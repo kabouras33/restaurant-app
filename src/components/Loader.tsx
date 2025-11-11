@@ -14,13 +14,12 @@ const Loader: React.FC<LoaderProps> = ({ size = 'medium', color = 'text-blue-500
   };
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-2">
+    <div className="flex flex-col items-center justify-center space-y-2" role="status" aria-live="polite">
       <div
         className={`animate-spin rounded-full border-t-transparent ${sizeClasses[size]} ${color}`}
-        role="status"
-        aria-label="Loading"
+        aria-label="Loading spinner"
       ></div>
-      {message && <span className="text-gray-600">{message}</span>}
+      {message && <p className="text-sm text-gray-600">{message}</p>}
     </div>
   );
 };

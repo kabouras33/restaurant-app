@@ -7,9 +7,7 @@ interface IntegrationDetail {
   id: string;
   name: string;
   description: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
+  isActive: boolean;
 }
 
 const IntegrationsAdvancedFeaturesDetail: React.FC = () => {
@@ -21,15 +19,12 @@ const IntegrationsAdvancedFeaturesDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    
     const fetchIntegrationDetail = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/integrations/${id}`);
+        const response = await axios.get(`/api/integrations/${id}`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
         setIntegration(response.data);
       } catch (err) {
         setError('Failed to load integration details.');
@@ -39,51 +34,58 @@ const IntegrationsAdvancedFeaturesDetail: React.FC = () => {
     };
 
     fetchIntegrationDetail();
-  }, [id, navigate, user]);
+  }, [id, user.token]);
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this integration?')) return;
     try {
-      await axios.delete(`/api/integrations/${id}`);
+      await axios.delete(`/api/integrations/${id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
       navigate('/integrations');
     } catch (err) {
-      setError('Failed to delete the integration.');
+      setError('Failed to delete integration.');
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-full">Loading...</div>;
-  }
+  const handleToggleActive = async () => {
+    if (!integration) return;
+    try {
+      const updatedIntegration = { ...integration, isActive: !integration.isActive };
+      await axios.put(`/api/integrations/${id}`, updatedIntegration, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      setIntegration(updatedIntegration);
+    } catch (err) {
+      setError('Failed to update integration status.');
+    }
+  };
 
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
-  }
+  if (loading) return <div className="flex justify-center items-center h-screen"><div className="loader"></div></div>;
+
+  if (error) return <div className="text-red-500 text-center mt-4">{error}</div>;
 
   return (
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">{integration?.name}</h1>
-      <p className="mb-2"><strong>Description:</strong> {integration?.description}</p>
-      <p className="mb-2"><strong>Status:</strong> {integration?.status}</p>
-      <p className="mb-2"><strong>Created At:</strong> {new Date(integration?.createdAt || '').toLocaleString()}</p>
-      <p className="mb-2"><strong>Updated At:</strong> {new Date(integration?.updatedAt || '').toLocaleString()}</p>
-      <div className="flex space-x-4 mt-4">
+      <p className="mb-4">{integration?.description}</p>
+      <div className="flex items-center mb-4">
+        <span className="mr-2">Status:</span>
+        <span className={`font-semibold ${integration?.isActive ? 'text-green-500' : 'text-red-500'}`}>
+          {integration?.isActive ? 'Active' : 'Inactive'}
+        </span>
+      </div>
+      <div className="flex space-x-4">
         <button
-          onClick={() => navigate(`/integrations/edit/${id}`)}
+          onClick={handleToggleActive}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
         >
-          Edit
+          {integration?.isActive ? 'Deactivate' : 'Activate'}
         </button>
         <button
           onClick={handleDelete}
           className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
         >
           Delete
-        </button>
-        <button
-          onClick={() => navigate('/integrations')}
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-        >
-          Back to List
         </button>
       </div>
     </div>

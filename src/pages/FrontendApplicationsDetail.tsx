@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ApplicationDetail {
-  id: number;
+  id: string;
   name: string;
   description: string;
   status: string;
@@ -25,7 +25,9 @@ const FrontendApplicationsDetail: React.FC = () => {
       try {
         setLoading(true);
         const response = await axios.get(`/api/applications/${id}`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
         });
         setApplication(response.data);
       } catch (err) {
@@ -43,11 +45,13 @@ const FrontendApplicationsDetail: React.FC = () => {
 
     try {
       await axios.delete(`/api/applications/${id}`, {
-        headers: { Authorization: `Bearer ${user?.token}` },
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
       });
       navigate('/applications');
     } catch (err) {
-      setError('Failed to delete application. Please try again later.');
+      setError('Failed to delete the application. Please try again later.');
     }
   };
 
@@ -60,28 +64,26 @@ const FrontendApplicationsDetail: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Application Details</h1>
       {application && (
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <h2 className="text-xl font-semibold">{application.name}</h2>
-          <p className="text-gray-700 mt-2">{application.description}</p>
-          <div className="mt-4">
-            <span className="text-sm text-gray-500">Status: </span>
-            <span className={`text-sm font-medium ${application.status === 'active' ? 'text-green-500' : 'text-red-500'}`}>
-              {application.status}
-            </span>
+        <div className="bg-white shadow-md rounded p-6">
+          <h2 className="text-xl font-semibold mb-2">{application.name}</h2>
+          <p className="text-gray-700 mb-4">{application.description}</p>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">Status: {application.status}</span>
+            <span className="text-sm text-gray-500">Created: {new Date(application.createdAt).toLocaleDateString()}</span>
           </div>
-          <div className="mt-4">
+          <div className="flex justify-end mt-4">
             <button
               onClick={() => navigate(`/applications/edit/${application.id}`)}
-              className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
+              className="bg-blue-500 text-white px-4 py-2 rounded mr-2 hover:bg-blue-600"
             >
               Edit
             </button>
             <button
               onClick={handleDelete}
-              className="bg-red-500 text-white px-4 py-2 rounded"
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
             >
               Delete
             </button>

@@ -1,53 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
 interface DeploymentDetail {
-  id: number;
+  id: string;
   name: string;
   status: string;
-  lastTested: string;
-  securityLevel: string;
+  lastUpdated: string;
+  description: string;
 }
 
 const TestingSecurityDeploymentDetail: React.FC = () => {
-  const { user } = useAuth();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [deploymentDetail, setDeploymentDetail] = useState<DeploymentDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
     const fetchDeploymentDetail = async () => {
       try {
-        const response = await axios.get<DeploymentDetail>('/api/deployment/detail');
+        const response = await axios.get(`/api/deployments/${id}`, {
+          headers: { Authorization: `Bearer ${user.token}` },
+        });
         setDeploymentDetail(response.data);
       } catch (err) {
-        setError('Failed to load deployment details.');
+        setError('Failed to fetch deployment details. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchDeploymentDetail();
-  }, [user, navigate]);
+  }, [id, user.token]);
 
-  const handleUpdate = async (updatedDetail: DeploymentDetail) => {
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this deployment?')) return;
+
     try {
-      setLoading(true);
-      await axios.put(`/api/deployment/${updatedDetail.id}`, updatedDetail);
-      setDeploymentDetail(updatedDetail);
-      alert('Deployment details updated successfully.');
+      await axios.delete(`/api/deployments/${id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      navigate('/deployments');
     } catch (err) {
-      setError('Failed to update deployment details.');
-    } finally {
-      setLoading(false);
+      setError('Failed to delete deployment. Please try again later.');
     }
   };
 
@@ -56,60 +54,38 @@ const TestingSecurityDeploymentDetail: React.FC = () => {
   }
 
   if (error) {
-    return <div className="text-red-500 text-center mt-4">{error}</div>;
+    return <div className="text-red-500 text-center">{error}</div>;
   }
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Deployment Detail</h1>
+      <header className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Deployment Detail</h1>
+        <button
+          onClick={logout}
+          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+        >
+          Logout
+        </button>
+      </header>
       {deploymentDetail && (
-        <div className="bg-white shadow-md rounded p-4">
-          <div className="mb-4">
-            <label className="block text-gray-700">Name:</label>
-            <input
-              type="text"
-              className="mt-1 block w-full border border-gray-300 rounded p-2"
-              value={deploymentDetail.name}
-              onChange={(e) => setDeploymentDetail({ ...deploymentDetail, name: e.target.value })}
-              required
-            />
+        <div className="bg-white shadow-md rounded p-6">
+          <h2 className="text-xl font-semibold mb-2">{deploymentDetail.name}</h2>
+          <p className="text-gray-700 mb-4">{deploymentDetail.description}</p>
+          <div className="flex justify-between items-center">
+            <span className={`px-2 py-1 rounded ${deploymentDetail.status === 'active' ? 'bg-green-200' : 'bg-red-200'}`}>
+              {deploymentDetail.status}
+            </span>
+            <span className="text-sm text-gray-500">Last Updated: {new Date(deploymentDetail.lastUpdated).toLocaleDateString()}</span>
           </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">Status:</label>
-            <input
-              type="text"
-              className="mt-1 block w-full border border-gray-300 rounded p-2"
-              value={deploymentDetail.status}
-              onChange={(e) => setDeploymentDetail({ ...deploymentDetail, status: e.target.value })}
-              required
-            />
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={handleDelete}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+            >
+              Delete
+            </button>
           </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">Last Tested:</label>
-            <input
-              type="date"
-              className="mt-1 block w-full border border-gray-300 rounded p-2"
-              value={deploymentDetail.lastTested}
-              onChange={(e) => setDeploymentDetail({ ...deploymentDetail, lastTested: e.target.value })}
-              required
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-gray-700">Security Level:</label>
-            <input
-              type="text"
-              className="mt-1 block w-full border border-gray-300 rounded p-2"
-              value={deploymentDetail.securityLevel}
-              onChange={(e) => setDeploymentDetail({ ...deploymentDetail, securityLevel: e.target.value })}
-              required
-            />
-          </div>
-          <button
-            className="bg-blue-500 text-white px-4 py-2 rounded"
-            onClick={() => handleUpdate(deploymentDetail)}
-          >
-            Update
-          </button>
         </div>
       )}
     </div>

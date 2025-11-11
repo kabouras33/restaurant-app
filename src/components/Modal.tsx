@@ -6,15 +6,15 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  onSubmit: (data: any) => Promise<void>;
+  content: React.ReactNode;
+  onSubmit: () => Promise<void>;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, onSubmit }) => {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, content, onSubmit }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '' });
   const modalRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -22,106 +22,83 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, onSubmit }) => {
         onClose();
       }
     };
+
     document.addEventListener('keydown', handleEscape);
     return () => {
       document.removeEventListener('keydown', handleEscape);
     };
   }, [onClose]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!formData.name || !formData.email) {
-      setError('All fields are required.');
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await onSubmit(formData);
+  const handleOutsideClick = (event: MouseEvent) => {
+    if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
       onClose();
-    } catch (err) {
-      setError('Submission failed. Please try again.');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    } else {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isOpen]);
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit();
+      onClose();
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div
         ref={modalRef}
-        className="bg-white rounded-lg shadow-lg overflow-hidden w-full max-w-md mx-4"
+        className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6"
         role="dialog"
-        aria-modal="true"
         aria-labelledby="modal-title"
+        aria-describedby="modal-content"
       >
-        <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900" id="modal-title">
-            {title}
-          </h3>
+        <div className="flex justify-between items-center mb-4">
+          <h2 id="modal-title" className="text-xl font-semibold">{title}</h2>
           <button
-            type="button"
-            className="text-gray-400 hover:text-gray-500"
             onClick={onClose}
-            aria-label="Close"
+            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            aria-label="Close modal"
           >
-            <span aria-hidden="true">&times;</span>
+            &times;
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="px-4 py-6">
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-              Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md mr-2"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-md"
-              disabled={loading}
-            >
-              {loading ? 'Submitting...' : 'Submit'}
-            </button>
-          </div>
-        </form>
+        <div id="modal-content" className="mb-4">
+          {content}
+        </div>
+        {error && <div className="text-red-500 mb-4">{error}</div>}
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2 hover:bg-gray-400 focus:outline-none"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 focus:outline-none ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit'}
+          </button>
+        </div>
       </div>
     </div>
   );

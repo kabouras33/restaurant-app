@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -12,15 +12,15 @@ interface UseIntegrationsAdvancedFeaturesReturn {
   integrations: IntegrationData[];
   loading: boolean;
   error: string | null;
-  fetchIntegrations: () => Promise<void>;
+  fetchIntegrations: () => void;
   updateIntegrationStatus: (id: string, status: string) => Promise<void>;
 }
 
 const useIntegrationsAdvancedFeatures = (): UseIntegrationsAdvancedFeaturesReturn => {
+  const { user } = useAuth();
   const [integrations, setIntegrations] = useState<IntegrationData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
   const fetchIntegrations = useCallback(async () => {
     setLoading(true);
@@ -33,39 +33,38 @@ const useIntegrationsAdvancedFeatures = (): UseIntegrationsAdvancedFeaturesRetur
       });
       setIntegrations(response.data);
     } catch (err) {
-      setError('Failed to fetch integrations. Please try again later.');
+      setError('Failed to fetch integrations. Please try again.');
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  const updateIntegrationStatus = useCallback(
-    async (id: string, status: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        await axios.patch(
-          `/api/integrations/${id}`,
-          { status },
-          {
-            headers: {
-              Authorization: `Bearer ${user?.token}`,
-            },
-          }
-        );
-        setIntegrations((prevIntegrations) =>
-          prevIntegrations.map((integration) =>
-            integration.id === id ? { ...integration, status } : integration
-          )
-        );
-      } catch (err) {
-        setError('Failed to update integration status. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [user]
-  );
+  const updateIntegrationStatus = useCallback(async (id: string, status: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await axios.patch(`/api/integrations/${id}`, { status }, {
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
+      });
+      setIntegrations((prevIntegrations) =>
+        prevIntegrations.map((integration) =>
+          integration.id === id ? { ...integration, status } : integration
+        )
+      );
+    } catch (err) {
+      setError('Failed to update integration status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchIntegrations();
+    }
+  }, [user, fetchIntegrations]);
 
   return {
     integrations,

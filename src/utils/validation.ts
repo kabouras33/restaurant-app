@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 interface ValidationResult {
   isValid: boolean;
-  errors: string[];
+  errors: Record<string, string>;
 }
 
 interface ValidationRules {
@@ -10,65 +10,64 @@ interface ValidationRules {
   minLength?: number;
   maxLength?: number;
   pattern?: RegExp;
-  customValidator?: (value: string) => boolean;
 }
 
-export const validateField = (value: string, rules: ValidationRules): ValidationResult => {
-  const errors: string[] = [];
+export const validateField = (name: string, value: string, rules: ValidationRules): ValidationResult => {
+  const errors: Record<string, string> = {};
 
   if (rules.required && !value.trim()) {
-    errors.push('This field is required.');
+    errors[name] = 'This field is required.';
   }
 
   if (rules.minLength && value.length < rules.minLength) {
-    errors.push(`Minimum length is ${rules.minLength} characters.`);
+    errors[name] = `Minimum length is ${rules.minLength} characters.`;
   }
 
   if (rules.maxLength && value.length > rules.maxLength) {
-    errors.push(`Maximum length is ${rules.maxLength} characters.`);
+    errors[name] = `Maximum length is ${rules.maxLength} characters.`;
   }
 
   if (rules.pattern && !rules.pattern.test(value)) {
-    errors.push('Invalid format.');
-  }
-
-  if (rules.customValidator && !rules.customValidator(value)) {
-    errors.push('Custom validation failed.');
+    errors[name] = 'Invalid format.';
   }
 
   return {
-    isValid: errors.length === 0,
+    isValid: Object.keys(errors).length === 0,
     errors,
   };
 };
 
 export const useFormValidation = (initialValues: Record<string, string>, validationRules: Record<string, ValidationRules>) => {
   const [values, setValues] = useState(initialValues);
-  const [errors, setErrors] = useState<Record<string, string[]>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setValues({ ...values, [name]: value });
 
-    const validationResult = validateField(value, validationRules[name]);
-    setErrors({ ...errors, [name]: validationResult.errors });
+    const { isValid, errors: fieldErrors } = validateField(name, value, validationRules[name]);
+    setErrors({ ...errors, ...fieldErrors });
+
+    if (isValid) {
+      delete errors[name];
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, onSubmit: () => Promise<void>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const validationResults = Object.keys(values).reduce((acc, key) => {
-      const result = validateField(values[key], validationRules[key]);
-      acc[key] = result.errors;
-      return acc;
-    }, {} as Record<string, string[]>);
+    const validationResults = Object.keys(values).map((field) =>
+      validateField(field, values[field], validationRules[field])
+    );
 
-    setErrors(validationResults);
+    const formIsValid = validationResults.every((result) => result.isValid);
+    const formErrors = validationResults.reduce((acc, result) => ({ ...acc, ...result.errors }), {});
 
-    const hasErrors = Object.values(validationResults).some(errorList => errorList.length > 0);
-    if (!hasErrors) {
+    setErrors(formErrors);
+
+    if (formIsValid) {
       try {
         await onSubmit();
       } catch (error) {

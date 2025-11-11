@@ -5,21 +5,19 @@ import axios from 'axios';
 const ForgotPassword: React.FC = () => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
-    setError(null);
-    setSuccess(null);
+    setError('');
+    setSuccess('');
 
     try {
-      const response = await axios.post('/api/auth/forgot-password', { email });
-      if (response.status === 200) {
-        setSuccess('Password reset link sent to your email.');
-      }
+      await axios.post('/api/auth/forgot-password', { email });
+      setSuccess('Password reset link sent to your email.');
     } catch (err) {
       setError('Failed to send password reset link. Please try again.');
     } finally {
@@ -30,8 +28,8 @@ const ForgotPassword: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-gray-100">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Forgot Password</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <h1 className="text-2xl font-bold mb-6 text-center">Forgot Password</h1>
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
               Email Address

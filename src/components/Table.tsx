@@ -2,111 +2,123 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
-interface TableProps<T> {
-  data: T[];
-  columns: { key: keyof T; label: string }[];
-  fetchUrl: string;
+interface TableProps {
+  endpoint: string;
+  columns: { key: string; label: string }[];
+  pageSize: number;
 }
 
-interface Pagination {
-  currentPage: number;
-  totalPages: number;
+interface TableData {
+  [key: string]: any;
 }
 
-const Table = <T extends object>({ data, columns, fetchUrl }: TableProps<T>) => {
+const Table: React.FC<TableProps> = ({ endpoint, columns, pageSize }) => {
   const { user } = useAuth();
-  const [tableData, setTableData] = useState<T[]>(data);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [data, setData] = useState<TableData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState<Pagination>({ currentPage: 1, totalPages: 1 });
-  const [sortConfig, setSortConfig] = useState<{ key: keyof T; direction: 'asc' | 'desc' } | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: string } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
       try {
-        const response = await axios.get(fetchUrl, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-          params: { page: pagination.currentPage },
+        setLoading(true);
+        const response = await axios.get(endpoint, {
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
         });
-        setTableData(response.data.items);
-        setPagination({ currentPage: response.data.currentPage, totalPages: response.data.totalPages });
+        setData(response.data);
       } catch (err) {
-        setError('Failed to fetch data');
+        setError('Failed to load data');
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [fetchUrl, pagination.currentPage, user]);
+  }, [endpoint, user]);
 
-  const handleSort = (key: keyof T) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
+  const handleSort = (key: string) => {
+    let direction = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
     }
     setSortConfig({ key, direction });
-    const sortedData = [...tableData].sort((a, b) => {
-      if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
-      if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+  };
+
+  const sortedData = React.useMemo(() => {
+    if (!sortConfig) return data;
+    return [...data].sort((a, b) => {
+      if (a[sortConfig.key] < b[sortConfig.key]) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (a[sortConfig.key] > b[sortConfig.key]) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
       return 0;
     });
-    setTableData(sortedData);
-  };
+  }, [data, sortConfig]);
 
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      setPagination((prev) => ({ ...prev, currentPage: newPage }));
-    }
-  };
+  const paginatedData = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedData.slice(start, start + pageSize);
+  }, [sortedData, currentPage, pageSize]);
 
-  if (loading) return <div className="text-center py-4">Loading...</div>;
-  if (error) return <div className="text-center py-4 text-red-500">{error}</div>;
+  const totalPages = Math.ceil(data.length / pageSize);
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full bg-white">
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th
-                key={String(column.key)}
-                onClick={() => handleSort(column.key)}
-                className="py-2 px-4 border-b border-gray-200 bg-gray-100 text-left text-sm font-semibold text-gray-700 cursor-pointer"
-                aria-sort={sortConfig?.key === column.key ? sortConfig.direction : 'none'}
-              >
-                {column.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {tableData.map((row, rowIndex) => (
-            <tr key={rowIndex} className="hover:bg-gray-50">
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="loader">Loading...</div>
+        </div>
+      ) : error ? (
+        <div className="text-red-500">{error}</div>
+      ) : (
+        <table className="min-w-full bg-white">
+          <thead>
+            <tr>
               {columns.map((column) => (
-                <td key={String(column.key)} className="py-2 px-4 border-b border-gray-200 text-sm text-gray-700">
-                  {row[column.key]}
-                </td>
+                <th
+                  key={column.key}
+                  onClick={() => handleSort(column.key)}
+                  className="py-2 px-4 bg-gray-200 text-gray-600 font-bold uppercase text-sm cursor-pointer"
+                  aria-sort={sortConfig?.key === column.key ? sortConfig.direction : 'none'}
+                >
+                  {column.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="flex justify-between items-center py-2">
+          </thead>
+          <tbody>
+            {paginatedData.map((row, index) => (
+              <tr key={index} className="border-t">
+                {columns.map((column) => (
+                  <td key={column.key} className="py-2 px-4">
+                    {row[column.key]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div className="flex justify-between items-center mt-4">
         <button
-          onClick={() => handlePageChange(pagination.currentPage - 1)}
-          disabled={pagination.currentPage === 1}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
           Previous
         </button>
-        <span className="text-sm text-gray-700">
-          Page {pagination.currentPage} of {pagination.totalPages}
+        <span>
+          Page {currentPage} of {totalPages}
         </span>
         <button
-          onClick={() => handlePageChange(pagination.currentPage + 1)}
-          disabled={pagination.currentPage === pagination.totalPages}
-          className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
           Next
         </button>
